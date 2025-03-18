@@ -5,8 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Home from './screens/Home';
 import WelcomeScreen from './screens/index';
 import About from './screens/About';
-// import Login from './screens/Login';
-// import SignUp from './screens/SignUp';
+import Login from './screens/auth/Login';
+import SignUp from './screens/auth/SignUp';
 
 //routes
 const Stack = createNativeStackNavigator();
@@ -21,6 +21,28 @@ export default function App() {
           component={WelcomeScreen} 
           options={{
             headerShown: false,
+        }}/>
+        <Stack.Screen 
+          name="login" 
+          component={Login} 
+          options={{
+            title: "Login",
+            headerShown: false,
+            headerStyle: {
+              backgroundColor: '#1a56a4',
+            },
+            headerTintColor: '#fff',
+        }}/>
+        <Stack.Screen 
+          name="signup" 
+          component={SignUp} 
+          options={{
+            title: "Create Account",
+            headerShown: false,
+            headerStyle: {
+              backgroundColor: '#1a56a4',
+            },
+            headerTintColor: '#fff',
         }}/>
         <Stack.Screen 
           name="home" 

@@ -58,7 +58,7 @@ const WelcomeScreen = () => {
       </View>
       
       {/* Version Info */}
-      <Text style={styles.versionText}>Version 1.0.0</Text>
+      <Text style={styles.versionText}>©2025 ShoeSpot. All rights reserved.</Text>
     </View>
   );
 };
