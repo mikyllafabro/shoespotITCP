@@ -1,19 +1,24 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import baseUrl from '../assets/common/baseUrl';
+import { registerSuccess } from '../Context/Actions/Auth.actions';
 
 const SignUp = () => {
   const navigation = useNavigation();
-  const [fullName, setFullName] = useState('');
+  const dispatch = useDispatch();
+  const [fullname, setFullname] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [loading, setLoading] = useState(false); // Add loading state
   
-  const handleSignUp = () => {
+  const handleSignUp = async () => {
     // Basic form validation
-    if (!fullName || !email || !password || !confirmPassword) {
-      alert("Please fill in all fields");
+    if (!fullname || !email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
     
@@ -21,12 +26,43 @@ const SignUp = () => {
       setPasswordError("Passwords do not match");
       return;
     }
-    
-    // Add your registration logic here
-    console.log("Registering with:", email);
-    
-    // For now, just navigate to home
-    navigation.navigate('home');
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullname: fullname,
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Something went wrong');
+      }
+
+      // Dispatch to Redux store on successful registration
+      dispatch(registerSuccess(data.user));
+      
+      // Registration successful
+      Alert.alert(
+        "Success", 
+        "Account created successfully!",
+        [{ text: "Login Now", onPress: () => navigation.navigate('Login') }]
+      );
+    } catch (error) {
+      console.error('Registration error:', error);
+      Alert.alert("Registration Failed", error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -38,7 +74,7 @@ const SignUp = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../assets/logo.png')}
+            source={require('../assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -49,8 +85,8 @@ const SignUp = () => {
           <TextInput
             style={styles.input}
             placeholder="Full Name"
-            value={fullName}
-            onChangeText={setFullName}
+            value={fullname}
+            onChangeText={setFullname}
             autoCapitalize="words"
           />
           
@@ -89,8 +125,16 @@ const SignUp = () => {
             <Text style={styles.errorText}>{passwordError}</Text>
           ) : null}
           
-          <TouchableOpacity style={styles.signupButton} onPress={handleSignUp}>
-            <Text style={styles.signupButtonText}>Create Account</Text>
+          <TouchableOpacity 
+            style={styles.signupButton} 
+            onPress={handleSignUp}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.signupButtonText}>Create Account</Text>
+            )}
           </TouchableOpacity>
         </View>
         
@@ -104,7 +148,7 @@ const SignUp = () => {
         
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('login')}>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
             <Text style={styles.loginText}>Login</Text>
           </TouchableOpacity>
         </View>

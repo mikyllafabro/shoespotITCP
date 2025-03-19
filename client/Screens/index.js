@@ -37,21 +37,21 @@ const WelcomeScreen = () => {
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={styles.loginButton}
-          onPress={() => navigation.navigate('login')}
+          onPress={() => navigation.navigate('Login')}
         >
           <Text style={styles.loginButtonText}>Login</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.signupButton}
-          onPress={() => navigation.navigate('signup')}
+          onPress={() => navigation.navigate('SignUp')}
         >
           <Text style={styles.signupButtonText}>Sign Up</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
           style={styles.guestButton}
-          onPress={() => navigation.navigate('home')}
+          onPress={() => navigation.navigate('Home')}
         >
           <Text style={styles.guestButtonText}>Continue as Guest</Text>
         </TouchableOpacity>
