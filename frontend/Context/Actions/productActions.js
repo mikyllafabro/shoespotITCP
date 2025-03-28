@@ -8,28 +8,36 @@ import { PRODUCT_LIST_REQUEST,
 } from '../Constants/ProductConstants';
 import baseURL from '../../assets/common/baseUrl';
 
-export const listProducts = () => async (dispatch) => {
+export const listProducts = (searchParams = {}) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_LIST_REQUEST });
     
-    console.log('Fetching products from:', `${baseURL}/products`);
-    const { data } = await axios.get(`${baseURL}/products`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      withCredentials: true
-    });
-    console.log('Products received:', data.products);
+    const queryParams = new URLSearchParams();
+    
+    // Handle search parameters
+    if (searchParams.keyword) {
+      queryParams.append('keyword', searchParams.keyword);
+    }
+    
+    // Handle brand/category filter - change from brand to category
+    if (searchParams.brand) {
+      queryParams.append('brand', searchParams.brand);
+    }
+    
+    // Handle price range
+    if (searchParams.price) {
+      if (searchParams.price.min) queryParams.append('price[gte]', searchParams.price.min);
+      if (searchParams.price.max) queryParams.append('price[lte]', searchParams.price.max);
+    }
 
-    // Transform the data to ensure image URLs are correct
-    const transformedProducts = data.products.map(product => ({
-      ...product,
-      image: product.images && product.images.length > 0 ? product.images[0].url : null
-    }));
+    const url = `${baseURL}/products?${queryParams.toString()}`;
+    console.log('Fetching products with URL:', url);
+    
+    const { data } = await axios.get(url);
 
     dispatch({ 
       type: PRODUCT_LIST_SUCCESS,
-      payload: transformedProducts 
+      payload: data.products 
     });
   } catch (error) {
     console.error('Error fetching products:', error);

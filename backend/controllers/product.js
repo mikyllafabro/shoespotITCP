@@ -66,28 +66,51 @@ exports.createProduct = async (req, res, next) => {
 //READ ALL PRODUCTS
 
 exports.getProducts = async (req, res, next) => {
-	try {
+    try {
+        console.log('Received query params:', req.query); // Debug log
+
         const resPerPage = req.query.limit;
         const currentPage = req.query.page;
-        const productsCount = await Product.countDocuments();
 
-        const apiFeatures = new APIFeatures(Product.find(), req.query).search().filter();
-        apiFeatures.pagination(resPerPage, currentPage);
+        // Build query
+        let query = {};
 
-        const products = await apiFeatures.query;
-        const filteredProductsCount = products.length;
+        // Handle keyword search
+        if (req.query.keyword) {
+            query.name = {
+                $regex: req.query.keyword,
+                $options: 'i'
+            };
+        }
 
-        if (!products) return res.status(400).json({ message: 'Error loading products' });
+        // Handle brand filter
+        if (req.query.brand) {
+            query.brand = req.query.brand; // Exact match for brand
+        }
+
+        // Handle price range
+        if (req.query['price[gte]'] || req.query['price[lte]']) {
+            query.price = {};
+            if (req.query['price[gte]']) query.price.$gte = Number(req.query['price[gte]']);
+            if (req.query['price[lte]']) query.price.$lte = Number(req.query['price[lte]']);
+        }
+
+        console.log('Final query:', query); // Debug log
+
+        const productsCount = await Product.countDocuments(query);
+        const products = await Product.find(query);
+        
+        console.log('Found Products:', products.length); // Debug log
 
         return res.status(200).json({
             success: true,
             count: products.length,
             products,
             resPerPage,
-            filteredProductsCount,
             productsCount
         });
     } catch (error) {
+        console.error('Error in getProducts:', error);
         return res.status(500).json({ message: error.message });
     }
 };

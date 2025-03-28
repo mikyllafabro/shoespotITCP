@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar,
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import { listProducts } from '../../Context/Actions/productActions';
+import SearchFilters from '../../components/SearchFilters';
 
 const Home = () => {
   const dispatch = useDispatch();
@@ -12,6 +13,10 @@ const Home = () => {
   useEffect(() => {
     dispatch(listProducts());
   }, [dispatch]);
+
+  const handleSearch = (searchParams) => {
+    dispatch(listProducts(searchParams));
+  };
 
   return (
     <View style={styles.container}>
@@ -36,6 +41,9 @@ const Home = () => {
       
       {/* Main content */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Add SearchFilters component */}
+        <SearchFilters onSearch={handleSearch} />
+
         {/* Hero Banner */}
         <View style={styles.heroBanner}>
           <Text style={styles.heroText}>Step Into Style</Text>

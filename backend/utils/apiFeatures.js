@@ -16,21 +16,25 @@ class APIFeatures {
         return this;
     }
 
-     filter() {
-
+    filter() {
         const queryCopy = { ...this.queryStr };
         
         // Removing fields from the query
         const removeFields = ['keyword', 'limit', 'page']
         removeFields.forEach(el => delete queryCopy[el]);
-        // console.log(queryCopy);
-        // Advance filter for price, ratings etc
+
+        // Filter for price and rating
         let queryStr = JSON.stringify(queryCopy);
-        
-        queryStr = queryStr.replace(/\b(gt|gte|lt|lte)\b/g, match => `$${match}`)
-        // console.log(queryStr);
-        this.query = this.query.find(JSON.parse(queryStr));
-        // console.log(this.query);
+        queryStr = queryStr.replace(/\b(gt|gte|lt|lte)\b/g, match => `$${match}`);
+
+        const parsedQuery = JSON.parse(queryStr);
+
+        // Handle brand filter
+        if (this.queryStr.brand) {
+            parsedQuery.brand = this.queryStr.brand;
+        }
+
+        this.query = this.query.find(parsedQuery);
         return this;
     }
 
