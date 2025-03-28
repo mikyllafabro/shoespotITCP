@@ -1,0 +1,5 @@
+node_modules
+.env
+dist/utils/serviceAccountKey.json
+utils/serviceAccountKey.json
+utils/serviceAccountKey.json
