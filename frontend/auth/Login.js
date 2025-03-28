@@ -1,5 +1,7 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import React, { useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
+import jwtDecode from 'jwt-decode';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import baseUrl from '../assets/common/baseUrl';
@@ -21,10 +23,13 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${baseUrl}/api/auth/login`, {
+      console.log(`Sending login request to: ${baseUrl}/auth/login`);
+
+      const response = await fetch(`${baseUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           email: email,
@@ -32,15 +37,42 @@ const Login = () => {
         }),
       });
 
-      const data = await response.json();
+      // Better error handling - similar to your SignUp.js
+    const contentType = response.headers.get("content-type");
+    console.log(`Login response status: ${response.status}, Content-Type: ${contentType}`);
+    
+    // Get response as text first
+    const responseText = await response.text();
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (error) {
+      console.error('Response is not valid JSON:', responseText.substring(0, 200));
+      throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
+    }
       
       if (!response.ok) {
         throw new Error(data.message || 'Invalid credentials');
       }
 
+      console.log('Login successful, saving token and user data');
+
+      // Store JWT token in SecureStore
+    if (data.token) {
+      await SecureStore.setItemAsync('jwt', data.token);
+      console.log('JWT token stored in SecureStore');
+    }
+    
+    // Store Firebase token if available
+    if (data.firebaseToken) {
+      await SecureStore.setItemAsync('firebaseToken', data.firebaseToken);
+      console.log('Firebase token stored in SecureStore');
+    }
       // Dispatch login action to Redux
-      dispatch(login(data.data));
-      
+      dispatch(login(data.user));
+
+
       // Navigate to home screen
       navigation.navigate('Home');
     } catch (error) {
@@ -94,7 +126,7 @@ const Login = () => {
       
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('signup')}>
+        <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
           <Text style={styles.signupText}>Sign Up</Text>
         </TouchableOpacity>
       </View>

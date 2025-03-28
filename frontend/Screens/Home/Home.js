@@ -1,10 +1,14 @@
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from 'react-native'
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
+import Header from '../../Shared/Stylesheets/Header';
+import WelcomeBanner from '../../Shared/Stylesheets/WelcomeBanner';
 import { listProducts } from '../../Context/Actions/productActions';
 import SearchFilters from '../../components/SearchFilters';
 
-const Home = () => {
+const Home = ({ toggleDrawer }) => {
+  const navigation = useNavigation();
   const dispatch = useDispatch();
   // Fix the selector to match your store structure
   const productList = useSelector(state => state.productList || {});
@@ -22,22 +26,11 @@ const Home = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#1a56a4" />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Image 
-            source={require('../../assets/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain" 
-          />
-          <Text style={styles.storeName}>ShoeSpot</Text>
-        </View>
-        <TouchableOpacity>
-          <View style={styles.cartButton}>
-            <Text style={styles.cartIcon}>🛒</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+      {/* Separated Header Component */}
+      <Header toggleDrawer={toggleDrawer} navigation={navigation} />
+      
+      {/* Separated Welcome Banner Component */}
+      <WelcomeBanner />
       
       {/* Main content */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

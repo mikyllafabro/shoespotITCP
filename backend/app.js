@@ -18,11 +18,11 @@ app.use(cors({
     origin: [
         'http://localhost:5000',
         'http://localhost:5173',
-        'http://192.168.1.100:5000',
-        'http://192.168.1.100:19000', // Expo development server
-        'http://192.168.1.100:19001', // Expo development server alternative port
-        'http://192.168.1.100:19002', // Expo development server alternative port
-        'exp://192.168.1.100:19000', // Expo client
+        'http://192.168.1.198:5000',
+        'http://192.168.1.198:19000', // Expo development server
+        'http://192.168.1.198:19001', // Expo development server alternative port
+        'http://192.168.1.198:19002', // Expo development server alternative port
+        'exp://192.168.1.198:19000', // Expo client
     ],
     methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
@@ -65,7 +65,7 @@ app.post('/api/v1/send-notification', async (req, res) => {
 });
 
 app.use('/api/v1', products);
-app.use('/api/auth', authRoute);
+app.use('/api/v1/auth', authRoute);
 app.use('/api/v1', orderListRoutes);
 // app.use('/api/v1', orderRoutes);
 
