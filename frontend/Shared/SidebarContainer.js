@@ -1,3 +1,112 @@
+// import React, { useState } from 'react';
+// import {
+//   View,
+//   Text,
+//   Platform,
+//   TouchableOpacity,
+//   StyleSheet,
+//   Modal,
+//   SafeAreaView,
+//   Dimensions
+// } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+// import Home from '../Screens/Home/Home';
+// import Sidebar from './Stylesheets/Sidebar';
+
+// const { width } = Dimensions.get('window');
+
+// // Simple SidebarContainer implementation without Reanimated
+// const SidebarContainer = ({ navigation }) => {
+//   const [showSidebar, setShowSidebar] = useState(false);
+
+//   const toggleSidebar = () => {
+//     setShowSidebar(!showSidebar);
+//   };
+
+//   const closeSidebar = () => {
+//     setShowSidebar(false);
+//   };
+
+//   return (
+//     <View style={styles.container}>
+//       {/* Home Component - we pass the toggleDrawer function */}
+//       <Home toggleDrawer={toggleSidebar} navigation={navigation} />
+      
+//       {/* Modal for sidebar */}
+//       <Modal
+//         visible={showSidebar}
+//         animationType="slide"
+//         transparent={true}
+//         onRequestClose={closeSidebar}
+//       >
+//         <SafeAreaView style={styles.modalContainer}>
+//           <View style={styles.modalInner}>
+//             {/* Overlay to close sidebar when tapped */}
+//             <TouchableOpacity 
+//               style={styles.sidebarOverlay}
+//               activeOpacity={1}
+//               onPress={closeSidebar}
+//             />
+            
+//             {/* Sidebar content */}
+//             <View style={styles.sidebarContainer}>
+//               <Sidebar closeSidebar={closeSidebar} navigation={navigation} />
+//             </View>
+//           </View>
+//         </SafeAreaView>
+//       </Modal>
+//     </View>
+//   );
+// };
+
+// const styles = StyleSheet.create({
+//   header: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     backgroundColor: '#1a56a4',
+//     height: 60,
+//     paddingHorizontal: 15,
+//     elevation: 4,
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.3,
+//     shadowRadius: 3,
+//   },
+//   logoContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//   },
+//   headerTitle: {
+//     color: '#fff',
+//     fontSize: 18,
+//     fontWeight: 'bold',
+//     marginLeft: 10,
+//   },
+//   modalContainer: {
+//     flex: 1,
+//     flexDirection: 'row',
+//   },
+//   sidebarOverlay: {
+//     flex: 1,
+//     backgroundColor: 'rgba(0,0,0,0.5)',
+//   },
+//   sidebarContainer: {
+//     width: '70%',
+//     backgroundColor: '#ffffff',
+//     shadowColor: '#000',
+//     shadowOffset: { width: 2, height: 0 },
+//     shadowOpacity: 0.25,
+//     shadowRadius: 3.84,
+//     elevation: 5,
+//   },
+//   cartButton: {
+//     padding: 8,
+//   },
+// });
+
+// export default SidebarContainer;
+
 import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
@@ -11,7 +120,7 @@ import {
   SafeAreaView
 } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Home from '../Screens/Home/Home';
+import Home from '../Screens/Home';
 import Sidebar from '../Shared/Stylesheets/Sidebar';
 
 const Stack = createNativeStackNavigator();

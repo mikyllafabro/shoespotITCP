@@ -5,7 +5,9 @@ export const getAuthState = (state) => state.auth || { user: null, isAuthenticat
 
 const WelcomeBanner = () => {
     const { user, isAuthenticated } = useSelector(state => state.auth || { user: null, isAuthenticated: false });
-  
+    // Add debug logging to see what's in the Redux store
+    console.log("Auth state in WelcomeBanner:", { user, isAuthenticated });
+    
   if (!isAuthenticated) return null;
   
   return (

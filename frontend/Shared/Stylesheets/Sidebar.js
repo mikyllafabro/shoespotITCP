@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { useAuth } from '../../Context/Actions/AuthContext'; // Fix this import path
+import { useAuth } from '../../Context/Actions/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 
 const Sidebar = ({ closeSidebar }) => {
@@ -27,12 +27,12 @@ const Sidebar = ({ closeSidebar }) => {
     }
     
     try {
-        navigation.navigate(screen);
-      } catch (error) {
-        console.error(`Navigation error to ${screen}:`, error);
-        Alert.alert("Navigation Error", `Could not navigate to ${screen}`);
-      }
-    };
+      navigation.navigate(screen);
+    } catch (error) {
+      console.error(`Navigation error to ${screen}:`, error);
+      Alert.alert("Navigation Error", `Could not navigate to ${screen}`);
+    }
+  };
   
   const handleLogout = () => {
     // Close sidebar
@@ -51,34 +51,49 @@ const Sidebar = ({ closeSidebar }) => {
           style: "destructive",
           onPress: async () => {
             try {
-                // Perform logout through auth context
-                if (signOut) {
-                  await signOut();
-                }
-                
-                // Use CommonActions to ensure this works across navigators
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'WelcomeScreen' }],
-                  })
-                );
-              } catch (error) {
-                console.error('Logout error:', error);
-                
-                // Even if there's an error with the signOut function,
-                // try to navigate the user away
-                try {
-                  navigation.navigate('Login');
-                } catch (navError) {
-                  Alert.alert('Error', 'Failed to logout and navigate');
-                }
+              // Perform logout through auth context
+              if (signOut) {
+                await signOut();
+              }
+              
+              // Use CommonActions to reset to Welcome screen
+              // Fix: Check which screen name is actually registered in your navigator
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Welcome' }], // Changed from 'WelcomeScreen' to 'Welcome'
+                })
+              );
+            } catch (error) {
+              console.error('Logout error:', error);
+              
+              // Even if there's an error with the signOut function,
+              // try to navigate the user away
+              try {
+                // Try a simple navigation if reset fails
+                navigation.navigate('Login');
+              } catch (navError) {
+                Alert.alert('Error', 'Failed to logout and navigate');
               }
             }
           }
-        ]
-      );
-    };
+        }
+      ]
+    );
+  };
+
+  // If the user clicks "Sign In" when not authenticated
+  const handleAuth = () => {
+    if (!isAuthenticated) {
+      closeSidebar && closeSidebar();
+      
+      // Navigate to Login instead of trying to log out
+      navigation.navigate('Login');
+    } else {
+      // Handle logout for authenticated users
+      handleLogout();
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -86,15 +101,20 @@ const Sidebar = ({ closeSidebar }) => {
       <View style={styles.userSection}>
         <View style={styles.profileImageContainer}>
           <Text style={styles.profileInitial}>
-            {user?.fullname ? user.fullname[0].toUpperCase() : '?'}
+            {user?.name ? user.name[0].toUpperCase() : '?'}
           </Text>
         </View>
-        <Text style={styles.userName}>{user?.fullname || 'Guest User'}</Text>
+        <Text style={styles.userName}>{user?.name || 'Guest User'}</Text>
         <Text style={styles.userEmail}>{user?.email || 'Sign in to access account'}</Text>
       </View>
       
       {/* Navigation Menu */}
       <ScrollView style={styles.menuContainer}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Home')}>
+          <Ionicons name="home-outline" size={24} color="#1a56a4" />
+          <Text style={styles.menuText}>Home</Text>
+        </TouchableOpacity>
+        
         <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Profile')}>
           <Ionicons name="person-outline" size={24} color="#1a56a4" />
           <Text style={styles.menuText}>Profile</Text>
@@ -132,10 +152,17 @@ const Sidebar = ({ closeSidebar }) => {
           <Text style={styles.menuText}>Help & Support</Text>
         </TouchableOpacity>
 
-        {/* Replace with proper logout button */}
-        <TouchableOpacity style={[styles.menuItem, styles.logoutButton]} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#e53935" />
-          <Text style={[styles.menuText, styles.logoutText]}>
+        {/* Use handleAuth to determine whether to show login or logout */}
+        <TouchableOpacity style={[styles.menuItem, styles.logoutButton]} onPress={handleAuth}>
+          <Ionicons 
+            name={isAuthenticated ? "log-out-outline" : "log-in-outline"} 
+            size={24} 
+            color={isAuthenticated ? "#e53935" : "#1a56a4"} 
+          />
+          <Text style={[
+            styles.menuText, 
+            isAuthenticated ? styles.logoutText : null
+          ]}>
             {isAuthenticated ? "Logout" : "Sign In"}
           </Text>
         </TouchableOpacity>
@@ -148,6 +175,7 @@ const Sidebar = ({ closeSidebar }) => {
   );
 };
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -37,8 +37,18 @@ const authReducer = (state = initialState, action) => {
           ...state,
           loading: action.payload,
         };
-    default:
-      return state;
+      case SET_CURRENT_USER:
+        // Add logging to see what's in the payload
+        console.log("SET_CURRENT_USER payload:", action.payload);
+        
+        return {
+          ...state,
+          isAuthenticated: true,
+          user: action.payload,
+          userLoading: false
+        };
+      default:
+        return state;
   }
 };
 
