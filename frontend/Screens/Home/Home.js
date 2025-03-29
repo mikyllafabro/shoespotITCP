@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { listProducts } from '../../Context/Actions/productActions';
 import SearchFilters from '../../components/SearchFilters';
 
-const Home = () => {
+const Home = ({ navigation }) => {
   const dispatch = useDispatch();
   // Fix the selector to match your store structure
   const productList = useSelector(state => state.productList || {});
@@ -32,11 +32,14 @@ const Home = () => {
           />
           <Text style={styles.storeName}>ShoeSpot</Text>
         </View>
-        <TouchableOpacity>
-          <View style={styles.cartButton}>
+        <View style={styles.headerButtonsContainer}>
+          <TouchableOpacity onPress={() => navigation.navigate('AdminHome')} style={styles.adminButton}>
+            <Text style={styles.adminIcon}>👤</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cartButton}>
             <Text style={styles.cartIcon}>🛒</Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
       </View>
       
       {/* Main content */}
@@ -95,9 +98,44 @@ const Home = () => {
                 <Text style={styles.brand}>
                   {product.brand || 'Brand not specified'}
                 </Text>
-                <Text style={styles.productPrice}>
-                  ${product.price?.toFixed(2) || '0.00'}
-                </Text>
+
+                {/* Price and Discount Section */}
+                <View style={styles.priceContainer}>
+                  {product.discount > 0 ? (
+                    <>
+                      <View style={styles.discountBadge}>
+                        <Text style={styles.discountText}>-{product.discount}%</Text>
+                      </View>
+                      <View style={styles.priceRow}>
+                        <Text style={styles.originalPrice}>
+                          ${product.price?.toFixed(2)}
+                        </Text>
+                        <Text style={styles.discountedPrice}>
+                          ${product.discountedPrice?.toFixed(2)}
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.regularPrice}>
+                      ${product.price?.toFixed(2)}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Stock Status */}
+                <View style={styles.stockContainer}>
+                  {product.stock > 0 ? (
+                    <Text style={[
+                      styles.stockText,
+                      product.stock <= 10 && styles.lowStockText
+                    ]}>
+                      {product.stock <= 10 ? `Only ${product.stock} left` : 'In Stock'}
+                    </Text>
+                  ) : (
+                    <Text style={styles.outOfStockText}>Out of Stock</Text>
+                  )}
+                </View>
+
                 <View style={styles.ratingContainer}>
                   <Text style={styles.rating}>
                     ★ {(product.ratings || 0).toFixed(1)}
@@ -304,6 +342,56 @@ const styles = StyleSheet.create({
   reviews: {
     fontSize: 12,
     color: '#666',
+  },
+  priceContainer: {
+    marginVertical: 4,
+  },
+  discountBadge: {
+    backgroundColor: '#e74c3c',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  discountText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  originalPrice: {
+    fontSize: 14,
+    color: '#666',
+    textDecorationLine: 'line-through',
+  },
+  discountedPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#e74c3c',
+  },
+  regularPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a56a4',
+  },
+  stockContainer: {
+    marginTop: 4,
+  },
+  stockText: {
+    fontSize: 12,
+    color: '#2ecc71',
+  },
+  lowStockText: {
+    color: '#f39c12',
+  },
+  outOfStockText: {
+    fontSize: 12,
+    color: '#e74c3c',
   },
 });
 

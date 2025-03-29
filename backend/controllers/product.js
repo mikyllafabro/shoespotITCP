@@ -15,103 +15,84 @@ let Filter;
 
 //CREATE
 exports.createProduct = async (req, res, next) => {
-    if (!req.files || req.files.length === 0) {
-        return res.status(400).json({
-            success: false,
-            message: 'Please upload product images.'
+    try {
+        // Parse numeric values with validation
+        const productData = {
+            ...req.body,
+            price: parseFloat(req.body.price) || 0,
+            discount: Math.min(Math.max(parseFloat(req.body.discount) || 0, 0), 100), // Ensure 0-100 range
+            stock: parseInt(req.body.stock) || 0
+        };
+
+        // Calculate discounted price
+        productData.discountedPrice = +(productData.price * (1 - productData.discount/100)).toFixed(2);
+
+        console.log('Creating product with data:', {
+            price: productData.price,
+            discount: productData.discount,
+            calculatedDiscountedPrice: productData.discountedPrice
         });
-    }
 
-    let imagesLinks = [];
-
-    for (let i = 0; i < req.files.length; i++) {
-        try {
-            // Ensure the path is valid and log it
-            console.log(`Uploading image from path: ${req.files[i].path}`);
-
-            const result = await cloudinary.v2.uploader.upload(req.files[i].path, {
-                folder: 'products',
-            });
-
-            imagesLinks.push({
-                public_id: result.public_id,
-                url: result.secure_url
-            });
-        } catch (error) {
-            console.error("Cloudinary upload error:", error);
-            return res.status(500).json({
-                success: false,
-                message: 'Error uploading images.',
-                error: error.message // Include error message for debugging
-            });
+        // Process images
+        if (req.files && req.files.length > 0) {
+            productData.images = await Promise.all(req.files.map(async file => {
+                const result = await cloudinary.v2.uploader.upload(file.path);
+                return {
+                    public_id: result.public_id,
+                    url: result.secure_url
+                };
+            }));
         }
-    }
 
-    req.body.images = imagesLinks;
-    const product = await Product.create(req.body);
+        const product = await Product.create(productData);
 
-    if (!product) {
+        return res.status(201).json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        console.error('Product creation error:', error);
         return res.status(400).json({
             success: false,
-            message: 'Product not created.'
+            message: error.message
         });
     }
-
-    return res.status(201).json({
-        success: true,
-        product
-    });
 };
 
 //READ ALL PRODUCTS
 
 exports.getProducts = async (req, res, next) => {
     try {
-        console.log('Received query params:', req.query); // Debug log
+        console.log('Fetching products with query:', req.query);
 
-        const resPerPage = req.query.limit;
-        const currentPage = req.query.page;
-
-        // Build query
-        let query = {};
-
-        // Handle keyword search
+        const query = {};
+        
+        // Add filters if they exist
         if (req.query.keyword) {
-            query.name = {
-                $regex: req.query.keyword,
-                $options: 'i'
-            };
+            query.name = { $regex: req.query.keyword, $options: 'i' };
         }
-
-        // Handle brand filter
         if (req.query.brand) {
-            query.brand = req.query.brand; // Exact match for brand
+            query.brand = req.query.brand;
         }
 
-        // Handle price range
-        if (req.query['price[gte]'] || req.query['price[lte]']) {
-            query.price = {};
-            if (req.query['price[gte]']) query.price.$gte = Number(req.query['price[gte]']);
-            if (req.query['price[lte]']) query.price.$lte = Number(req.query['price[lte]']);
-        }
+        console.log('Final MongoDB query:', query);
 
-        console.log('Final query:', query); // Debug log
-
-        const productsCount = await Product.countDocuments(query);
         const products = await Product.find(query);
         
-        console.log('Found Products:', products.length); // Debug log
+        console.log(`Found ${products.length} products`);
 
         return res.status(200).json({
             success: true,
             count: products.length,
-            products,
-            resPerPage,
-            productsCount
+            products
         });
     } catch (error) {
-        console.error('Error in getProducts:', error);
-        return res.status(500).json({ message: error.message });
+        console.error('Error fetching products:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching products',
+            error: error.message
+        });
     }
 };
 
@@ -128,23 +109,60 @@ const fetchBrands = async () => {
 
 //READ SPECIFIC PRODUCT
 exports.getSingleProduct = async (req, res, next) => {
-	const product = await Product.findById(req.params.id);
-    if (!product) {
-        return res.status(404).json({
+    try {
+        console.log('Fetching product with ID:', req.params.id);
+        
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid product ID format'
+            });
+        }
+
+        const product = await Product.findById(req.params.id);
+        
+        console.log('Found product:', product);
+
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            product
+        });
+    } catch (error) {
+        console.error('Error fetching product:', error);
+        return res.status(500).json({
             success: false,
-            message: 'Product not found'
+            message: 'Error fetching product',
+            error: error.message
         });
     }
-    return res.status(200).json({
-        success: true,
-        product
-    });
 };
 
 
 // UPDATE PRODUCT
 exports.updateProduct = async (req, res, next) => {
     try {
+        const updates = { ...req.body };
+        
+        // Handle numeric fields
+        if (updates.price) updates.price = Number(updates.price);
+        if (updates.discount) updates.discount = Number(updates.discount);
+        if (updates.stock) updates.stock = Number(updates.stock);
+
+        // Calculate new discounted price if price or discount changed
+        if (updates.price || updates.discount) {
+            const product = await Product.findById(req.params.id);
+            const newPrice = updates.price || product.price;
+            const newDiscount = updates.discount || product.discount;
+            updates.discountedPrice = +(newPrice * (1 - newDiscount/100)).toFixed(2);
+        }
+
         let product = await Product.findById(req.params.id);
 
         if (!product) {
@@ -154,22 +172,22 @@ exports.updateProduct = async (req, res, next) => {
             });
         }
 
-        let images = [];
+        // Handle numeric fields
+        if (req.body.stock) req.body.stock = Number(req.body.stock);
+        if (req.body.price) req.body.price = Number(req.body.price);
+        if (req.body.discount) req.body.discount = Number(req.body.discount);
 
-        if (typeof req.body.images === 'string') {
-            images.push(req.body.images);
-        } else if (Array.isArray(req.body.images)) {
-            images = req.body.images;
-        }
-
-        if (images.length > 0) {
+        // Handle images if present
+        let imagesLinks = [];
+        if (req.files && req.files.length > 0) {
+            // Delete old images from cloudinary
             for (let i = 0; i < product.images.length; i++) {
                 await cloudinary.v2.uploader.destroy(product.images[i].public_id);
             }
 
-            let imagesLinks = [];
-            for (let i = 0; i < images.length; i++) {
-                const result = await cloudinary.v2.uploader.upload(images[i], {
+            // Upload new images
+            for (let i = 0; i < req.files.length; i++) {
+                const result = await cloudinary.v2.uploader.upload(req.files[i].path, {
                     folder: 'products',
                 });
                 imagesLinks.push({
@@ -177,11 +195,11 @@ exports.updateProduct = async (req, res, next) => {
                     url: result.secure_url
                 });
             }
-
             req.body.images = imagesLinks;
-        } else {
-            req.body.images = product.images;
         }
+
+        // Log update data
+        console.log('Updating product with data:', req.body);
 
         product = await Product.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
@@ -204,38 +222,55 @@ exports.updateProduct = async (req, res, next) => {
 
 // DELETE PRODUCT
 exports.deleteProduct = async (req, res, next) => {
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-        return res.status(404).json({
-            success: false,
-            message: 'Product not found'
-        });
-    }
-
-    if (product.images && product.images.length > 0) {
-        const deleteImageResult = await cloudinary.uploader.destroy(product.images[0].public_id);
-        if (deleteImageResult.result !== 'ok') {
-            return res.status(500).json({
+    try {
+        console.log('Attempting to delete product:', req.params.id);
+        
+        const product = await Product.findById(req.params.id);
+        
+        if (!product) {
+            console.log('Product not found');
+            return res.status(404).json({
                 success: false,
-                message: 'Failed to delete image from Cloudinary'
+                message: 'Product not found'
             });
         }
+
+        // Delete images from cloudinary if they exist
+        if (product.images && product.images.length > 0) {
+            try {
+                for (const image of product.images) {
+                    if (image.public_id) {
+                        console.log('Deleting image:', image.public_id);
+                        await cloudinary.v2.uploader.destroy(image.public_id);
+                    }
+                }
+            } catch (cloudinaryError) {
+                console.error('Cloudinary deletion error:', cloudinaryError);
+                // Continue with product deletion even if image deletion fails
+            }
+        }
+
+        // Delete the product from database
+        await Product.findByIdAndDelete(req.params.id);
+        console.log('Product deleted successfully');
+
+        return res.status(200).json({
+            success: true,
+            message: `Product deleted successfully`
+        });
+    } catch (error) {
+        console.error('Delete product error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error deleting product',
+            error: error.message
+        });
     }
-
-    await Product.findByIdAndDelete(req.params.id);
-
-    return res.status(200).json({
-        success: true,
-        message: `Product "${product.name}" deleted successfully.`
-
-        
-    });
 };
 
 exports.createProductReview = async (req, res) => {
     try {
       const { id: productId } = req.params; // Match the param name to the route
-      const { rating, comment } = req.body;
   
       // Ensure the bad-words filter is initialized
       if (!Filter) {
@@ -501,3 +536,26 @@ exports.createProductReview = async (req, res) => {
         });
     }
   };
+
+exports.getInventoryStats = async (req, res) => {
+    try {
+        const totalProducts = await Product.countDocuments();
+        const lowStockProducts = await Product.countDocuments({ stock: { $gt: 0, $lte: 10 } });
+        const outOfStockProducts = await Product.countDocuments({ stock: 0 });
+
+        return res.status(200).json({
+            success: true,
+            stats: {
+                totalProducts,
+                lowStockProducts,
+                outOfStockProducts
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching inventory stats:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching inventory stats'
+        });
+    }
+};

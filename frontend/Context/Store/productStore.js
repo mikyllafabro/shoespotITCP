@@ -1,24 +1,32 @@
-import { createStore, combineReducers, applyMiddleware } from 'redux';
-import { thunk } from 'redux-thunk'; // Fix thunk import
-import { productListReducer } from '../Reducers/productReducers';
+import { configureStore } from '@reduxjs/toolkit';
+import { 
+  productListReducer, 
+  productCreateReducer,
+  productUpdateReducer,
+  productDeleteReducer,
+  productReviewsReducer
+} from '../Reducers/productReducers';
 
-const initialState = {
-  productList: {
-    loading: false,
-    products: [],
-    error: null
-  }
+// Custom middleware for logging
+const logger = store => next => action => {
+  console.log('Dispatching:', action.type);
+  let result = next(action);
+  console.log('Next State:', store.getState());
+  return result;
 };
 
-const rootReducer = combineReducers({
-  productList: productListReducer
+const store = configureStore({
+  reducer: {
+    productList: productListReducer,
+    productCreate: productCreateReducer,
+    productUpdate: productUpdateReducer,
+    productDelete: productDeleteReducer,
+    productReviews: productReviewsReducer
+  },
+  middleware: (getDefaultMiddleware) => 
+    getDefaultMiddleware({
+      serializableCheck: false
+    }).concat(logger)
 });
-
-// Create store with thunk middleware
-const store = createStore(
-  rootReducer,
-  initialState,
-  applyMiddleware(thunk)
-);
 
 export default store;
