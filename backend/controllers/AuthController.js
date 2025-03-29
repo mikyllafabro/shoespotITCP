@@ -3,12 +3,28 @@ const { admin, db } = require('../utils/firebaseConfig');
 const User = require('../models/UserModel.js');
 const cloudinary = require('../utils/cloudinary');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 exports.signup = async (req, res) => {
-  const { name, email, password, firebaseUid, role, status, userImage, cloudinary_id } = req.body;
+  const { name, email, password, role, status, userImage, cloudinary_id } = req.body;
     // const imageFile = req.file;
 
     try {
+    // 1. First create the user in Firebase Authentication
+    const firebaseUser = await admin.auth().createUser({
+      email: email,
+      password: password, // Firebase will handle the password hashing
+      displayName: name
+    });
+
+    await db.collection('users').doc(firebaseUser.uid).set({
+      name: name,
+      email: email,
+      status: status || 'active',
+      avatarURL: userImage || null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
       // Hash the password before saving to MongoDB
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -17,7 +33,7 @@ exports.signup = async (req, res) => {
           name,
           email,
           password: hashedPassword, // Save the hashed password
-          firebaseUid,
+          firebaseUid: firebaseUser.uid, // Generate a fake UID,
           role: role || 'user',
           status: status || 'active',
           userImage,
@@ -25,10 +41,100 @@ exports.signup = async (req, res) => {
       });
 
       await newUser.save();
-      res.status(201).json({ message: 'User registered successfully in MongoDB.' });
+
+      res.status(201).json({ message: 'User registered successfully in MongoDB.',
+        user: {
+          id: newUser._id,
+          firebaseUid: firebaseUser.uid,
+          name,
+          email,
+          role: newUser.role
+        }
+       });
   } catch (error) {
       console.error('Error saving user to MongoDB:', error.message);
+
+      // Handle specific Firebase Auth errors
+    if (error.code === 'auth/email-already-exists') {
+      return res.status(400).json({ message: 'Email already exists in Firebase' });
+    }
+    
+    // If we created a Firebase user but failed to save in MongoDB, clean up the Firebase user
+    if (error.message.includes('MongoDB') && req.firebaseUid) {
+      try {
+        await admin.auth().deleteUser(req.firebaseUid);
+        console.log('Cleaned up Firebase user after MongoDB error');
+      } catch (cleanupError) {
+        console.error('Failed to clean up Firebase user:', cleanupError);
+      }
+    }
       res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+};
+
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    console.log(`Login attempt for email: ${email}`);
+    
+    // Find user in MongoDB by email and include password for verification
+    const user = await User.findOne({ email }).select('+password');
+    
+    if (!user) {
+      console.log(`User not found: ${email}`);
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    console.log('User found, checking password...');
+    console.log('User has password field:', user.password ? 'Yes' : 'No');
+    
+    // Check if the user has a password before comparing
+    if (!user.password) {
+      console.log('User has no password stored in the database');
+      return res.status(401).json({ message: 'Account requires password reset' });
+    }
+
+    // Verify password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
+      console.log(`Invalid password for user: ${email}`);
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    console.log('Password verified, generating tokens...');
+    // Generate JWT token (more reliable than Firebase custom token)
+    const jwtToken = jwt.sign(
+      { 
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        firebaseUid: user.firebaseUid
+      },
+      process.env.JWT_SECRET || 'shoespot', // Use environment variable or fallback
+      { expiresIn: '7d' }
+    );
+
+    // Create Firebase custom token as backup/optional
+    let firebaseToken = null;
+
+    // Return both tokens and user data
+    res.status(200).json({
+      message: 'Login successful',
+      token: jwtToken, // Primary token for authentication
+      firebaseToken: firebaseToken, // Optional Firebase token
+      user: {
+        id: user._id,
+        firebaseUid: user.firebaseUid,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status || firestoreData.status || 'active',
+        userImage: user.userImage || firestoreData.avatarURL || null
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Login failed', error: error.message });
   }
 };
 
@@ -220,40 +326,6 @@ exports.getUserData = async (req, res) => {
   } catch (error) {
       console.error('Error fetching user data:', error.message);
       res.status(500).json({ message: 'Internal server error', error: error.message });
-  }
-};
-
-exports.login = async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    // Authenticate the user using Firebase Authentication (get user details from Firebase)
-    const userRecord = await admin.auth().getUserByEmail(email);
-    
-    // Fetch the user's information from Firestore using the Firebase UID
-    const userDoc = await db.collection('users').doc(userRecord.uid).get();
-
-    // Check if the user document exists
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: 'User not found in Firestore' });
-    }
-
-    const user = userDoc.data();
-
-    // Send the user information along with a success message
-    res.status(200).json({
-      message: 'User logged in successfully',
-      user: {
-        name: user.name,
-        email: user.email,
-        status: user.status,  // Assuming status is a field in your user document
-        avatarURL: user.avatarURL,
-        // role: user.role,  
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: 'Login failed' });
   }
 };
 

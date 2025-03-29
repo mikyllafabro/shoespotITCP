@@ -10,9 +10,15 @@ const userSchema = new mongoose.Schema({
         required: [true, 'Please provide an email'],
         unique: true,
     },
+    password: {
+        type: String,
+        required: [true, 'Please provide a password'],
+        minlength: 6,
+        select: false,
+    },
     firebaseUid: {
         type: String,
-        required: [true, 'Firebase UID is required'],
+        required: true,
         unique: true,
     },
     role: {
