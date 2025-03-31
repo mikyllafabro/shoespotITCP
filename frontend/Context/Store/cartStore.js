@@ -4,6 +4,7 @@ import { cartReducer } from '../Reducers/cartReducers';
 import { productListReducer } from '../Reducers/productReducers';
 import { productReviewsReducer } from '../Reducers/productReviewsReducer';
 import { orderReducer } from '../Reducers/orderReducers';
+import { authReducer } from '../Reducers/authReducers';
 
 const initialState = {
   cart: {
@@ -13,6 +14,13 @@ const initialState = {
     cartCount: 0,
     orderCount: 0,
     orderList: []
+  },
+  auth: {
+    user: null,
+    isAuthenticated: false,
+    loading: false,
+    token: null,
+    error: null
   },
   productList: { loading: false, products: [] },
   productReviews: { loading: false, reviews: [], error: null },
@@ -29,20 +37,22 @@ const initialState = {
 
 const rootReducer = combineReducers({
   cart: cartReducer,
+  auth: authReducer,
   productList: productListReducer,
   productReviews: productReviewsReducer,
   order: orderReducer
 });
 
-// Add more detailed logging middleware
+// Debug middleware
 const loggerMiddleware = store => next => action => {
-  console.log('Dispatching action:', {
-    type: action.type,
-    payload: action.payload,
-    state: store.getState()
-  });
+  console.log('Cart Action:', action.type, action.payload);
+  const prevState = store.getState().cart;
   const result = next(action);
-//   console.log('New state:', store.getState());
+  const nextState = store.getState().cart;
+  console.log('Cart State Change:', {
+    prev: prevState,
+    next: nextState
+  });
   return result;
 };
 

@@ -23,6 +23,8 @@ import {
   }
   
   export const cartReducer = (state = initialState, action) => {
+    console.log("Cart reducer received action:", action.type, action.payload);
+    
     switch (action.type) {
       case ADD_TO_CART:
         return {
@@ -66,11 +68,27 @@ import {
           orderCount: action.payload
         }
       case GET_ORDER_LIST_REQUEST:
-        return { ...state, loading: true }
+        return {
+          ...state,
+          loading: true,
+          error: null,
+          orderList: [] // Clear previous list while loading
+        }
       case GET_ORDER_LIST_SUCCESS:
-        return { ...state, loading: false, orderList: action.payload }
+        return {
+          ...state,
+          loading: false,
+          error: null,
+          orderList: action.payload,
+          cartCount: action.payload.reduce((sum, item) => sum + (item.quantity || 0), 0)
+        }
       case GET_ORDER_LIST_FAIL:
-        return { ...state, loading: false, error: action.payload }
+        return {
+          ...state,
+          loading: false,
+          error: action.payload,
+          orderList: []
+        }
       case 'SET_SELECTED_ORDERS':
         // For direct ordering or cart selection
         return {

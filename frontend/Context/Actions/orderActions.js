@@ -12,7 +12,7 @@ import {
   GET_USER_ORDERS_FAIL,
   SET_SELECTED_ITEMS,
   SET_PAYMENT_METHOD
-} from '../Constants/orderConstants';
+} from '../Constants/OrderConstants';
 import { clearCartData } from './cartActions';
 
 export const createOrder = (orderData) => async (dispatch) => {
@@ -136,20 +136,35 @@ export const placeOrder = (orderData, navigation) => async (dispatch) => {
   try {
     dispatch({ type: CREATE_ORDER_REQUEST });
     const token = await SecureStore.getItemAsync("jwt");
+    const userDataStr = await SecureStore.getItemAsync("user");
 
-    if (!token) {
-      throw new Error('Authentication token not found');
+    if (!token || !userDataStr) {
+      throw new Error('Authentication token or user data not found');
     }
 
-    console.log('Placing order:', {
-      userId: orderData.userId,
-      productsCount: orderData.products.length
-    });
+    const userData = JSON.parse(userDataStr);
+    console.log('Processing order with user data:', userData);
 
-    // Step 1: Place the order
+    const userId = userData._id || userData.id;
+    if (!userId) {
+      throw new Error('User ID is missing from stored data');
+    }
+
+    // Format order data
+    const formattedOrderData = {
+      ...orderData,
+      userId: userId,
+      products: orderData.products.map(product => ({
+        productId: product.productId,
+        quantity: product.quantity
+      }))
+    };
+
+    console.log('Submitting order:', formattedOrderData);
+
     const orderResponse = await axios.post(
       `${baseURL}/place-order`,
-      orderData,
+      formattedOrderData,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -160,37 +175,31 @@ export const placeOrder = (orderData, navigation) => async (dispatch) => {
 
     console.log('Order response:', orderResponse.data);
 
-    // Step 2: Clean up cart
-    await axios.delete(`${baseURL}/delete-ordered-products`, {
-      headers: { 'Authorization': `Bearer ${token}` },
-      data: {
-        userId: orderData.userId,
-        productIds: orderData.products.map(p => p.productId)
-      }
+    dispatch({ 
+      type: CREATE_ORDER_SUCCESS, 
+      payload: orderResponse.data.order 
     });
-
-    dispatch({ type: CREATE_ORDER_SUCCESS, payload: orderResponse.data.order });
+    
+    // Clear cart and navigate home
     dispatch(clearCartData());
-
+    
     Alert.alert(
-      'Order Placed Successfully',
-      'Thank you for your order!',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          })
-        }
-      ]
+      'Success',
+      'Order placed successfully!',
+      [{ 
+        text: 'OK',
+        onPress: () => navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }]
+        })
+      }]
     );
 
   } catch (error) {
-    console.error('Order placement error:', error.response?.data || error.message);
+    console.error('Order placement failed:', error);
     dispatch({
       type: CREATE_ORDER_FAIL,
-      payload: error.response?.data?.message || 'Failed to place order'
+      payload: error.message || 'Failed to place order'
     });
     Alert.alert('Error', 'Failed to place order. Please try again.');
   }

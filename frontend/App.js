@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React from "react";
 import { Provider } from "react-redux";
-import store from "./Context/Store/store";
+import store from "./Context/Store/store"; // Import only this store
 import { AuthProvider } from "./Context/Actions/AuthContext";
 import AppNavigator from "./Navigators/AppNavigator";
 

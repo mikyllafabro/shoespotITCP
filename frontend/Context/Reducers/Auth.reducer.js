@@ -1,44 +1,53 @@
-import { LOGIN, LOGIN_FAIL, LOGOUT, SET_CURRENT_USER, REGISTER_SUCCESS } from "../Actions/Auth.actions";
+import { LOGIN, LOGIN_FAIL, LOGOUT, SET_CURRENT_USER, REGISTER_SUCCESS, SET_CART_LOADING, SET_CART_ERROR } from "../Actions/Auth.actions";
 
 const initialState = {
   user: null,
   isAuthenticated: false,
-  // loading: true,
+  loading: false,
   token: null,
+  error: null,
+  cartLoading: false,
+  cartError: null
 };
 
-  export const authReducer = (state = initialState, action) => {
-    console.log("Auth reducer received action:", action.type, action.payload);
+export const authReducer = (state = initialState, action) => {
+  console.log("Auth reducer received action:", action.type, action.payload);
     
   switch (action.type) {
-      case LOGIN:
-        return {
-          ...state,
-          user: action.payload,
-          isAuthenticated: true
-          // Note: We're not setting isAuthenticated here because that's done by SET_CURRENT_USER
-        };
-        case LOGIN_FAIL:
-      // Fix: Handle the case when payload might not exist
+    case LOGIN:
       return {
         ...state,
-        // loading: false,
-        error: action.payload || "Login failed",
-        isAuthenticated: false
+        user: action.payload.user,
+        token: action.payload.token,
+        isAuthenticated: true,
+        loading: false,
+        error: null,
+        cartError: null
       };
-      case SET_CURRENT_USER:
-        console.log("SET_CURRENT_USER action received with payload:", action.payload);
-        return {
-          ...state,
-          user: action.payload.user,
-          token: action.payload.token,
-          isAuthenticated: true
-        };
+    case LOGIN_FAIL:
+      return {
+        ...state,
+        error: action.payload || "Login failed",
+        isAuthenticated: false,
+        loading: false
+      };
+    case SET_CURRENT_USER:
+      console.log("SET_CURRENT_USER action received with payload:", action.payload);
+      return {
+        ...state,
+        user: action.payload.user,
+        token: action.payload.token,
+        isAuthenticated: true,
+        loading: false,
+        error: null
+      };
     case REGISTER_SUCCESS:
       return {
         ...state,
         user: action.payload,
         isAuthenticated: true,
+        loading: false,
+        error: null
       };
     case LOGOUT:
       return {
@@ -46,9 +55,22 @@ const initialState = {
         user: null,
         token: null,
         isAuthenticated: false,
-      }
-      default:
-        return state;
+        loading: false,
+        error: null
+      };
+    case SET_CART_LOADING:
+      return {
+        ...state,
+        cartLoading: action.payload
+      };
+    case SET_CART_ERROR:
+      return {
+        ...state,
+        cartError: action.payload,
+        cartLoading: false
+      };
+    default:
+      return state;
   }
 }
 

@@ -17,29 +17,15 @@ import {
 
 export const addToCart = (productId, quantity) => async (dispatch) => {
   try {
-    dispatch({ type: SET_CART_LOADING, payload: true })
+    dispatch({ type: SET_CART_LOADING, payload: true });
     
-    // Get stored token
-    const token = await SecureStore.getItemAsync("jwt");
+    const token = await SecureStore.getItemAsync('jwt');
     console.log('Cart - Using token:', token ? 'Token exists' : 'No token');
     
     if (!token) {
-      throw new Error('Authentication token not found. Please login again.')
+      throw new Error('Authentication token not found. Please login again.');
     }
 
-    // Get stored user data
-    const userDataStr = await SecureStore.getItemAsync("userData");
-    const userData = JSON.parse(userDataStr);
-    console.log('Cart - User data:', {
-      id: userData?._id,
-      email: userData?.email
-    });
-
-    if (!userData || !userData._id) {
-      throw new Error('User data not found. Please login again.');
-    }
-
-    // Configure request with token
     const config = {
       headers: {
         'Content-Type': 'application/json',
@@ -47,27 +33,20 @@ export const addToCart = (productId, quantity) => async (dispatch) => {
       }
     };
 
-    console.log('Cart - Making request to:', `${baseURL}/add-to-orderlist`);
-    
-    // Add to cart using stored user ID
     const response = await axios.post(
       `${baseURL}/add-to-orderlist`,
       {
         product_id: productId,
-        user_id: userData._id,
         quantity
       },
       config
     );
-
-    console.log('Cart - Response:', response.data);
 
     dispatch({
       type: ADD_TO_CART,
       payload: response.data.order
     });
     
-    // Fetch updated cart count
     dispatch(fetchCartCount());
 
     return { success: true };
@@ -137,7 +116,8 @@ export const fetchCartCount = () => async (dispatch) => {
       return;
     }
 
-    // Get cart count from API
+    console.log('Fetching cart count with token:', token.substring(0, 20) + '...');
+
     const response = await axios.get(`${baseURL}/get-orderlist-count`, {
       headers: { 
         'Authorization': `Bearer ${token}`,
@@ -145,14 +125,18 @@ export const fetchCartCount = () => async (dispatch) => {
       }
     });
 
-    console.log('Cart count response (total quantities):', response.data);
+    console.log('Cart count response:', response.data);
 
     dispatch({
       type: SET_CART_COUNT,
       payload: response.data.count || 0
     });
   } catch (error) {
-    console.error('Failed to fetch cart count:', error);
+    console.error('Failed to fetch cart count:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
     dispatch({ type: SET_CART_COUNT, payload: 0 });
   }
 };
@@ -160,41 +144,10 @@ export const fetchCartCount = () => async (dispatch) => {
 export const initializeCartCount = () => async (dispatch) => {
   try {
     const token = await SecureStore.getItemAsync("jwt");
-    if (!token) return;
-
-    const response = await axios.get(`${baseURL}/get-orderlist-count`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-
-    dispatch({
-      type: SET_CART_COUNT,
-      payload: response.data.count || 0
-    });
-  } catch (error) {
-    console.error('Failed to initialize cart count:', error);
-  }
-};
-
-export const fetchOrderCount = () => async (dispatch) => {
-  try {
-    console.log('Fetching order count...');
-    const token = await SecureStore.getItemAsync("jwt");
     if (!token) {
-      console.log('No token found for order count');
-      dispatch({ type: SET_ORDER_COUNT, payload: 0 });
+      dispatch({ type: SET_CART_COUNT, payload: 0 });
       return;
     }
-
-    console.log('Using token:', token ? 'Token exists' : 'No token');
-
-    // Make sure to verify user auth first
-    const userDataStr = await SecureStore.getItemAsync("userData");
-    if (!userDataStr) {
-      throw new Error('User data not found');
-    }
-
-    const userData = JSON.parse(userDataStr);
-    console.log('User data found:', !!userData);
 
     const response = await axios.get(`${baseURL}/get-orderlist-count`, {
       headers: { 
@@ -203,18 +156,40 @@ export const fetchOrderCount = () => async (dispatch) => {
       }
     });
 
-    console.log('Order count response:', response.data);
+    dispatch({
+      type: SET_CART_COUNT,
+      payload: response.data.count || 0
+    });
+  } catch (error) {
+    console.error('Failed to initialize cart count:', {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    });
+    dispatch({ type: SET_CART_COUNT, payload: 0 });
+  }
+};
+
+export const fetchOrderCount = () => async (dispatch) => {
+  try {
+    const token = await SecureStore.getItemAsync("jwt");
+    if (!token) {
+      dispatch({ type: SET_ORDER_COUNT, payload: 0 });
+      return;
+    }
+
+    const response = await axios.get(`${baseURL}/get-orderlist-count`, {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+      }
+    });
 
     dispatch({
       type: SET_ORDER_COUNT,
       payload: response.data.count || 0
     });
   } catch (error) {
-    console.error('Failed to fetch order count:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status
-    });
+    console.error('Failed to fetch order count:', error);
     dispatch({ type: SET_ORDER_COUNT, payload: 0 });
   }
 };
@@ -223,30 +198,32 @@ export const getUserOrderList = () => async (dispatch) => {
   try {
     dispatch({ type: GET_ORDER_LIST_REQUEST });
     
-    const token = await SecureStore.getItemAsync("jwt");
-    const userDataStr = await SecureStore.getItemAsync("userData");
-    
-    if (!token || !userDataStr) {
-      throw new Error('Authentication required');
+    const token = await SecureStore.getItemAsync('jwt');
+    if (!token) {
+      throw new Error('No authentication token found');
     }
 
+    console.log('Fetching cart with token:', token.substring(0, 20) + '...');
+    
     const response = await axios.get(`${baseURL}/user-orderlist`, {
       headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${token}`
       }
     });
+
+    console.log('Cart API response:', response.data);
+
+    if (!response.data.orders) {
+      throw new Error('Invalid response format');
+    }
 
     dispatch({
       type: GET_ORDER_LIST_SUCCESS,
       payload: response.data.orders
     });
 
-    // Update cart count with total quantities
-    const totalQuantity = response.data.orders.reduce((sum, order) => sum + (order.quantity || 0), 0);
-    dispatch({ type: SET_CART_COUNT, payload: totalQuantity });
   } catch (error) {
-    console.error('Failed to fetch order list:', error);
+    console.error('Cart fetch error:', error);
     dispatch({
       type: GET_ORDER_LIST_FAIL,
       payload: error.message

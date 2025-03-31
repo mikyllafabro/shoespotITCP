@@ -5,27 +5,16 @@ const { admin, db } = require('../utils/firebaseConfig');
 
 exports.addToOrderList = async (req, res) => {
   try {
-    const { product_id, user_id, quantity } = req.body;
+    const { product_id, quantity } = req.body;
+    const user_id = req.user._id; // Get user ID from authenticated request
 
-    // Log the incoming request body
-    console.log("Incoming Request Body:", req.body);
-
-    if (!product_id || !user_id || !quantity) {
-      console.log("Missing fields in request body.");
-      return res.status(400).json({ message: 'Product ID, User ID, and Quantity are required.' });
-    }
-
-    // Verify user existence
-    const user = await User.findById(user_id);
-    if (!user) {
-      console.log("User not found for user_id:", user_id);
-      return res.status(404).json({ message: 'User not found.' });
+    if (!product_id || !quantity) {
+      return res.status(400).json({ message: 'Product ID and Quantity are required.' });
     }
 
     // Verify product existence
     const product = await Product.findById(product_id);
     if (!product) {
-      console.log("Product not found for product_id:", product_id);
       return res.status(404).json({ message: 'Product not found.' });
     }
 
@@ -33,48 +22,29 @@ exports.addToOrderList = async (req, res) => {
     const existingOrder = await OrderList.findOne({ product_id, user_id });
 
     if (existingOrder) {
-      console.log("Existing order found. Updating quantity...");
       existingOrder.quantity += quantity;
       await existingOrder.save();
       return res.status(200).json({
         message: 'Order list updated successfully.',
-        order: existingOrder,
-        user: {
-          username: user.username,
-          email: user.email,
-        },
-        product: {
-          name: product.name,
-          description: product.description,
-        },
+        order: existingOrder
       });
     }
 
-    // Create a new order entry if it doesn't exist
-    console.log("Creating a new order...");
+    // Create new order
     const newOrder = new OrderList({
       product_id,
       user_id,
-      quantity,
+      quantity
     });
 
     await newOrder.save();
-    console.log("Order created successfully.");
 
-    return res.status(201).json({
+    res.status(201).json({
       message: 'Product added to order list successfully.',
-      order: newOrder,
-      user: {
-        username: user.username,
-        email: user.email,
-      },
-      product: {
-        name: product.name,
-        description: product.description,
-      },
+      order: newOrder
     });
   } catch (error) {
-    console.error('Error adding to order list:', error); // Log the actual error
+    console.error('Error adding to order list:', error);
     res.status(500).json({ message: 'Failed to add product to order list.' });
   }
 };
@@ -117,16 +87,17 @@ exports.getUserId = async (req, res) => {
 // Example route handler
 exports.getOrderListCount = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Unauthorized: No token provided.' });
-    }
+    // Get user from protect middleware
+    const user = req.user;
+    
+    // Count orders for the authenticated user
+    const count = await OrderList.countDocuments({ user_id: user._id });
+    
+    console.log('Order count for user:', {
+      userId: user._id,
+      count: count
+    });
 
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const userId = decodedToken.uid;
-
-    // Fetch the user's order list count
-    const count = await OrderList.countDocuments({ user_id: userId });
     res.status(200).json({ count });
   } catch (error) {
     console.error('Error fetching order list count:', error);
@@ -134,47 +105,57 @@ exports.getOrderListCount = async (req, res) => {
   }
 };
 
+// Update getUserOrderList to use JWT authentication as well
 exports.getUserOrderList = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Unauthorized: No token provided.' });
-    }
+    console.log('Fetching order list - User:', {
+      id: req.user._id,
+      email: req.user.email
+    });
 
-    // Decode Firebase token
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const userId = decodedToken.uid;
-
-    // Find the user in MongoDB by Firebase UID
-    const user = await User.findOne({ firebaseUid: userId });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
+    // Get user from protect middleware - using JWT auth now
+    const user = req.user;
 
     // Fetch all order list items for this user
-    const orders = await OrderList.find({ user_id: user._id }).populate('product_id');
+    console.log('Querying OrderList with user_id:', user._id);
+    const orders = await OrderList.find({ user_id: user._id })
+      .populate('product_id');
+
+    console.log('Found orders:', orders.length);
+    console.log('Raw orders data:', JSON.stringify(orders, null, 2));
 
     if (orders.length === 0) {
+      console.log('No orders found for user');
       return res.status(200).json({ message: 'No items in the order list.', orders: [] });
     }
 
-    // Map the orders with product and user details
-    const formattedOrders = orders.map((order) => ({
-      order_id: order._id,
-      product: {
-        id: order.product_id._id,
-        name: order.product_id.name,
-        description: order.product_id.description,
-        price: order.product_id.price,
-        image: order.product_id.images[0]?.url || '', // Assuming product has an images array
-      },
-      quantity: order.quantity,
-      timestamp: order.timestamp,
-    }));
+    // Map the orders with product details
+    const formattedOrders = orders.map((order) => {
+      console.log('Processing order:', {
+        orderId: order._id,
+        productId: order.product_id._id,
+        quantity: order.quantity
+      });
+      
+      return {
+        order_id: order._id,
+        product: {
+          id: order.product_id._id,
+          name: order.product_id.name,
+          description: order.product_id.description,
+          price: order.product_id.price,
+          image: order.product_id.images[0]?.url || '',
+        },
+        quantity: order.quantity,
+        timestamp: order.timestamp,
+      };
+    });
+
+    console.log('Formatted orders:', JSON.stringify(formattedOrders, null, 2));
 
     res.status(200).json({ orders: formattedOrders });
   } catch (error) {
-    console.error('Error fetching user order list:', error);
+    console.error('Error in getUserOrderList:', error);
     res.status(500).json({ message: 'Failed to fetch user order list.' });
   }
 };

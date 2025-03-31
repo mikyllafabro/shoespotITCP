@@ -1,47 +1,33 @@
-const jwt = require('jsonwebtoken'); 
-const User = require('../models/UserModel'); 
-const { admin } = require('../utils/firebaseConfig'); 
+const jwt = require('jsonwebtoken');
+const User = require('../models/UserModel');
 const createError = require('../utils/error');
 
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
-    // Check if the Authorization header exists and starts with 'Bearer'
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Authorization header missing or invalid');
-      return next(new createError('You are not logged in! Please log in to get access.', 401));
+      return next(new createError('Authentication token missing', 401));
     }
 
     const token = authHeader.split(' ')[1];
-    if (!token) {
-      console.error('Token is missing');
-      return next(new createError('You are not logged in! Please log in to get access.', 401));
-    }
 
-    console.log('Encoded Token:', token); // Debug: Log the token
+    // Verify JWT token (not Firebase token)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'shoespot');
 
-    // Verify the token using Firebase Admin SDK
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    console.log('Decoded Token UID:', decodedToken.uid); // Debug: Log decoded token UID
-
-    // Fetch the user from MongoDB using firebaseUid
-    const user = await User.findOne({ firebaseUid: decodedToken.uid });
+    // Find user using the decoded token data
+    const user = await User.findById(decoded.id);
+    
     if (!user) {
-      console.error('No user found with the given UID in MongoDB');
-      return next(new createError('The user belonging to this token no longer exists.', 401));
+      return next(new createError('User not found', 401));
     }
 
-    console.log('Authenticated User:', user); // Debug: Log user details
-
-    // Attach the user object to the request
+    // Attach user to request object
     req.user = user;
-
-
-    next(); // Continue to the next middleware
+    next();
   } catch (error) {
     console.error('Error in protect middleware:', error);
-    return next(new createError('You are not logged in! Please log in to get access.', 401));
+    next(new createError('Authentication failed', 401));
   }
 };
 

@@ -16,6 +16,8 @@ import ViewProducts from "../Screens/Admin/ViewProducts";
 import UpdateProduct from "../Screens/Admin/UpdateProduct";
 import DeleteProduct from "../Screens/Admin/DeleteProduct";
 import ProductDetails from '../Screens/Products/ProductDetails';
+import CartScreen from '../Screens/Cart/CartScreen';
+import Confirm from '../Screens/Cart/Checkout/Confirm';
 
 const Stack = createNativeStackNavigator();
 
@@ -79,6 +81,34 @@ const AppNavigator = () => {
               name="Login" 
               component={Login}
               options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Cart" 
+              component={CartScreen}
+              options={{
+                title: 'Shopping Cart',
+                headerStyle: {
+                  backgroundColor: '#1a56a4',
+                },
+                headerTintColor: '#fff',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }}
+            />
+            <Stack.Screen 
+              name="Confirm" 
+              component={Confirm}
+              options={{
+                title: 'Order Confirmation',
+                headerStyle: {
+                  backgroundColor: '#1a56a4',
+                },
+                headerTintColor: '#fff',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+              }}
             />
           </>
         )}

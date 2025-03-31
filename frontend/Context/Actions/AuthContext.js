@@ -105,12 +105,21 @@ export function AuthProvider({ children }) {
     
     signIn: async (data) => {
       try {
-        // Store token in secure storage
+        const userData = {
+          user: data.user,
+          token: data.token
+        };
+        
+        // Store complete user data
         await SecureStore.setItemAsync('jwt_token', data.token);
+        await SecureStore.setItemAsync('user_data', JSON.stringify(data.user));
+        
         // Update local context
         dispatch({ type: 'SIGN_IN', token: data.token });
-        // Update Redux store
-        reduxDispatch(login(data));
+        
+        // Update Redux store with complete user data
+        reduxDispatch(login(userData));
+        
         return { success: true };
       } catch (error) {
         console.error('Error during sign in:', error);
@@ -136,10 +145,20 @@ export function AuthProvider({ children }) {
     // Helper to get the current token
     getToken: async () => {
       try {
-        return await SecureStore.getItemAsync('jwt_token');
+        const token = await SecureStore.getItemAsync('jwt_token');
+        const userData = await SecureStore.getItemAsync('user_data');
+        
+        if (!token || !userData) {
+          return { token: null, user: null };
+        }
+
+        return {
+          token,
+          user: JSON.parse(userData)
+        };
       } catch (e) {
-        console.error('Failed to get token', e);
-        return null;
+        console.error('Failed to get token or user data', e);
+        return { token: null, user: null };
       }
     }
   };

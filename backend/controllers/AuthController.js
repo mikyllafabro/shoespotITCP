@@ -229,49 +229,39 @@ exports.uploadAvatar = [
     }
   }
 ];
-//modified
+
 exports.getCurrentUser = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
+    // Get user from protect middleware
+    const user = req.user;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized: No token provided' });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const token = authHeader.split(' ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    const firebaseUid = decodedToken.uid;
-
-    // Fetch user details from Firestore (Firebase)
-    const userDoc = await db.collection('users').doc(firebaseUid).get();
-
-    if (!userDoc.exists) {
-      return res.status(404).json({ message: "User not found in Firestore" });
-    }
-
-    // Fetch user details from MongoDB using Firebase UID
-    const mongoUser = await User.findOne({ firebaseUid });
-
+    // Get complete user data from MongoDB
+    const mongoUser = await User.findById(user._id);
     if (!mongoUser) {
-      return res.status(404).json({ message: "User not found in MongoDB" });
+      return res.status(404).json({ message: "User not found in database" });
     }
 
-    // Merge Firestore and MongoDB data
-    const user = {
-      _id: mongoUser._id, // Include MongoDB ID
-      name: mongoUser.name || userDoc.data().name,
-      email: mongoUser.email || userDoc.data().email,
-      status: mongoUser.status || userDoc.data().status,
-      avatarURL: mongoUser.userImage || userDoc.data().avatarURL,
-      role: mongoUser.role || "user",
+    const userData = {
+      _id: mongoUser._id,
+      name: mongoUser.name,
+      email: mongoUser.email,
+      status: mongoUser.status,
+      role: mongoUser.role,
+      userImage: mongoUser.userImage,
+      mobileNumber: mongoUser.mobileNumber,
+      address: mongoUser.address
     };
 
     res.status(200).json({
-      message: "User retrieved successfully",
-      user,
+      message: "User data retrieved successfully",
+      user: userData
     });
   } catch (error) {
-    console.error("Error fetching user:", error.message);
+    console.error("Error fetching user:", error);
     res.status(500).json({ message: "Failed to fetch user details" });
   }
 };

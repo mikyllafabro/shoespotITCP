@@ -9,8 +9,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-const Header = ({ toggleDrawer }) => {
-  const navigation = useNavigation();
+const Header = ({ toggleDrawer, navigation }) => {
+
+  const handleCartPress = () => {
+    if (navigation) {
+      navigation.navigate('Cart');
+    }
+  };
 
   return (
     <View style={styles.header}>
@@ -35,7 +40,7 @@ const Header = ({ toggleDrawer }) => {
       <View style={styles.headerRight}>
         <TouchableOpacity 
           style={styles.cartButton}
-          onPress={() => navigation.navigate('Cart')}
+          onPress={handleCartPress}
         >
           <Ionicons name="cart-outline" size={24} color="white" />
         </TouchableOpacity>

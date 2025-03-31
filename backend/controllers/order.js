@@ -7,13 +7,26 @@ exports.placeOrder = async (req, res) => {
   try {
     const { userId, products, paymentMethod } = req.body;
 
-    const user = await User.findOne({ firebaseUid: userId });
+    console.log('Received order request:', {
+      userId,
+      productsCount: products?.length,
+      paymentMethod
+    });
 
+    if (!userId || !products || !Array.isArray(products) || products.length === 0) {
+      console.error('Invalid order data:', { userId, products });
+      return res.status(400).json({
+        message: 'Invalid order data. Please provide userId and products array.'
+      });
+    }
+
+    // Find user directly by MongoDB _id
+    const user = await User.findById(userId);
     if (!user) {
+      console.error('User not found with ID:', userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Create the order
     const order = new Order({
       userId: user._id,
       products,
@@ -22,6 +35,7 @@ exports.placeOrder = async (req, res) => {
     });
 
     await order.save();
+    console.log('Order saved:', order);
 
     res.status(201).json({
       message: 'Order placed successfully',

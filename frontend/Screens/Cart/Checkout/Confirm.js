@@ -6,7 +6,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import { getUserProfile } from '../../../Context/Actions/Auth.actions';
 import axios from 'axios';
-import { API_URL } from '@env';
+import baseUrl from '../../../assets/common/baseUrl';
 import { clearCartData } from '../../../Context/Actions/cartActions';
 import { placeOrder } from '../../../Context/Actions/orderActions';
 import * as SecureStore from 'expo-secure-store';
@@ -24,32 +24,52 @@ const Confirm = ({ navigation }) => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const userProfile = await getUserProfile();
-        console.log('[Confirm] MongoDB User profile:', {
-          username: userProfile.username,
-          mobileNumber: userProfile.mobileNumber,
-          address: userProfile.address,
-          email: userProfile.email
+        const token = await SecureStore.getItemAsync('jwt');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        // Fetch user data from MongoDB
+        const response = await axios.get(`${baseUrl}/auth/me`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         });
-        
-        if (!userProfile.mobileNumber || !userProfile.address) {
+
+        const mongoUser = response.data.user;
+        console.log('MongoDB User Data:', mongoUser);
+
+        setUserData({
+          ...mongoUser,
+          username: mongoUser.name,
+          mobileNumber: mongoUser.mobileNumber || null,
+          address: mongoUser.address || null
+        });
+
+        if (!mongoUser.mobileNumber || !mongoUser.address) {
           Alert.alert(
             'Missing Information',
-            'Please update your profile with mobile number and address.'
+            'Please update your profile with mobile number and address.',
+            [
+              {
+                text: 'Update Profile',
+                onPress: () => navigation.navigate('Profile') // You'll need to create this screen
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              }
+            ]
           );
         }
-        
-        setUserData(userProfile);
       } catch (error) {
-        console.error('[Confirm] Error fetching user profile:', error);
-        Alert.alert(
-          'Error',
-          'Failed to load user information. Please try again.'
-        );
+        console.error('Error fetching user data:', error);
+        Alert.alert('Error', 'Failed to load user information');
       }
     };
+
     fetchUserData();
-  }, []);
+  }, [navigation]);
 
   if (!userData) {
     return (
@@ -82,7 +102,7 @@ const Confirm = ({ navigation }) => {
 
     try {
       const orderData = {
-        userId: userData.firebaseUid,
+        userId: userData._id, // Use MongoDB _id instead of firebaseUid
         products: selectedOrders.map(item => ({
           productId: item.product.id,
           quantity: item.quantity
@@ -93,9 +113,11 @@ const Confirm = ({ navigation }) => {
         total: calculateGrandTotal()
       };
 
+      console.log('Placing order with data:', orderData);
       await dispatch(placeOrder(orderData, navigation));
     } catch (error) {
       console.error('Order placement error:', error);
+      Alert.alert('Error', 'Failed to place order. Please try again.');
     } finally {
       setIsProcessing(false);
     }
@@ -109,7 +131,7 @@ const Confirm = ({ navigation }) => {
           <Image 
             source={{ uri: item.product.image }}
             style={styles.productImage}
-            defaultSource={require('../../../assets/Home/placeholder.png')}
+            defaultSource={require('../../../assets/logo.png')}
           />
           <View style={styles.productInfo}>
             <Text style={styles.productName}>{item.product.name}</Text>
@@ -140,7 +162,7 @@ const Confirm = ({ navigation }) => {
           onPress={() => setSelectedPayment('cash_on_delivery')}
         >
           <Image 
-            source={require('../../../assets/images/cod.png')}
+            source={require('../../../assets/logo.png')}
             style={styles.paymentIcon}
           />
           <Text>Cash on Delivery</Text>
@@ -154,7 +176,7 @@ const Confirm = ({ navigation }) => {
           onPress={() => setSelectedPayment('credit_card')}
         >
           <Image 
-            source={require('../../../assets/images/credit-card.png')}
+            source={require('../../../assets/logo.png')}
             style={styles.paymentIcon}
           />
           <Text>Credit Card</Text>
@@ -168,7 +190,7 @@ const Confirm = ({ navigation }) => {
           onPress={() => setSelectedPayment('gcash')}
         >
           <Image 
-            source={require('../../../assets/images/gcash.png')}
+            source={require('../../../assets/logo.png')}
             style={styles.paymentIcon}
           />
           <Text>GCash</Text>

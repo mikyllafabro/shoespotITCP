@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema({
     },
     cloudinary_id: {
         type: String,
+    },
+    mobileNumber: {
+        type: String,
+        trim: true,
+        default: null
+    },
+    address: {
+        type: String,
+        trim: true,
+        default: null
     }
 });
 

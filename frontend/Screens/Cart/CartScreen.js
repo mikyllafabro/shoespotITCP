@@ -1,48 +1,61 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { getUserOrderList, removeFromCart, fetchOrderCount, updateCartQuantity } from '../../Context/Actions/cartActions';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { API_URL } from '@env';
+import baseUrl from '../../assets/common/baseUrl';
 import * as SecureStore from 'expo-secure-store';
 import { useNavigation } from '@react-navigation/native';
-import { setSelectedItems } from '../../Context/Actions/orderActions';
+import { setSelectedItems } from '../../Context/Actions/cartActions';
+import { createSelector } from 'reselect';
 
 const CartScreen = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
   const [selectedItems, setSelectedItems] = useState({});
   const [loading, setLoading] = useState(false);
-  
-  const { orderList, loading: cartLoading, error } = useSelector(state => {
-    return {
-      orderList: state.cart?.orderList || [],
-      loading: state.cart?.loading || false,
-      error: state.cart?.error || null
-    };
-  });
+
+  // Use direct state slice selection
+  const { orderList, loading: cartLoading, error } = useSelector(state => ({
+    orderList: state.cart?.orderList || [],
+    loading: state.cart?.loading || false,
+    error: state.cart?.error || null
+  }));
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = await SecureStore.getItemAsync("jwt");
-      const userData = await SecureStore.getItemAsync("userData");
-      
-      if (!token || !userData) {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'signin' }],
-        });
-        return;
-      }
+    const loadCart = async () => {
+      try {
+        const token = await SecureStore.getItemAsync("jwt");
+        const userData = await SecureStore.getItemAsync("user");
+        
+        if (!token || !userData) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          });
+          return;
+        }
 
-      // Fetch both order list and count
-      dispatch(getUserOrderList());
-      dispatch(fetchOrderCount());
+        console.log('Loading cart with token:', token ? 'exists' : 'missing');
+        await dispatch(getUserOrderList());
+      } catch (error) {
+        console.error('Error loading cart:', error);
+      }
     };
-    
-    checkAuth();
+
+    loadCart();
   }, [dispatch]);
+
+  // Debug log for cart state
+  useEffect(() => {
+    console.log('Current cart state:', {
+      orderList,
+      itemCount: orderList?.length,
+      loading: cartLoading,
+      error
+    });
+  }, [orderList, cartLoading, error]);
 
   const handleQuantityUpdate = async (orderId, newQuantity) => {
     if (newQuantity <= 0) {
@@ -129,11 +142,15 @@ const CartScreen = () => {
         />
       </TouchableOpacity>
       
-      <Image 
-        source={{ uri: item.product.image }} 
-        style={styles.productImage}
-        defaultSource={require('../../assets/Home/placeholder.png')}
-      />
+      {item.product.image ? (
+        <Image 
+          source={{ uri: item.product.image }} 
+          style={styles.productImage}
+          defaultSource={require('../../assets/logo.png')}
+        />
+      ) : (
+        <View style={[styles.productImage, styles.productImagePlaceholder]} />
+      )}
       
       <View style={styles.productInfo}>
         <View style={styles.productHeader}>
@@ -145,16 +162,8 @@ const CartScreen = () => {
             <Ionicons name="trash-outline" size={24} color="#ff4444" />
           </TouchableOpacity>
         </View>
-        <View style={styles.priceContainer}>
-          {item.product.discountedPrice ? (
-            <>
-              <Text style={styles.originalPrice}>₱{item.product.price}</Text>
-              <Text style={styles.discountedPrice}>₱{item.product.discountedPrice}</Text>
-            </>
-          ) : (
-            <Text style={styles.productPrice}>₱{item.product.price}</Text>
-          )}
-        </View>
+        
+        <Text style={styles.productPrice}>₱{item.product.price}</Text>
         
         <View style={styles.quantityControl}>
           <TouchableOpacity 
@@ -254,6 +263,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
+  },
+  productImagePlaceholder: {
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   productInfo: {
     marginLeft: 16,

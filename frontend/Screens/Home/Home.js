@@ -23,8 +23,7 @@ import Sidebar from '../../Shared/Stylesheets/Sidebar';
 const { width } = Dimensions.get('window');
 const SIDEBAR_WIDTH = width * 0.7;
 
-const Home = ({ toggleDrawer }) => {
-  const navigation = useNavigation();
+const Home = ({ navigation }) => {
   const dispatch = useDispatch();
   
   // Redux state for products
@@ -116,53 +115,47 @@ const Home = ({ toggleDrawer }) => {
 
   // Handle drawer toggle from header
   const handleToggleDrawer = () => {
-    if (toggleDrawer) {
-      toggleDrawer();
-    } else if (isOpen) {
+    if (isOpen) {
       closeDrawer();
     } else {
       openDrawer();
     }
   };
   
+  // Update backdrop and sidebar conditional rendering
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
       <StatusBar barStyle="light-content" backgroundColor="#1a56a4" />
       
-      {/* Separated Header Component */}
       <Header toggleDrawer={handleToggleDrawer} navigation={navigation} />
       
       {/* Animated Backdrop */}
-      {!toggleDrawer && (
-        <Animated.View 
-          style={[
-            sidebarStyles.backdrop,
-            { 
-              opacity: backdropOpacity,
-              pointerEvents: isOpen ? 'auto' : 'none'
-            }
-          ]}
-          pointerEvents={isOpen ? 'auto' : 'none'}
-        >
-          <TouchableOpacity 
-            style={{ flex: 1 }} 
-            activeOpacity={1}
-            onPress={closeDrawer}
-          />
-        </Animated.View>
-      )}
+      <Animated.View 
+        style={[
+          sidebarStyles.backdrop,
+          { 
+            opacity: backdropOpacity,
+            pointerEvents: isOpen ? 'auto' : 'none'
+          }
+        ]}
+        pointerEvents={isOpen ? 'auto' : 'none'}
+      >
+        <TouchableOpacity 
+          style={{ flex: 1 }} 
+          activeOpacity={1}
+          onPress={closeDrawer}
+        />
+      </Animated.View>
       
       {/* Animated Sidebar */}
-      {!toggleDrawer && (
-        <Animated.View 
-          style={[
-            sidebarStyles.sidebar,
-            { transform: [{ translateX }] }
-          ]}
-        >
-          <Sidebar closeSidebar={closeDrawer} navigation={navigation} />
-        </Animated.View>
-      )}
+      <Animated.View 
+        style={[
+          sidebarStyles.sidebar,
+          { transform: [{ translateX }] }
+        ]}
+      >
+        <Sidebar closeSidebar={closeDrawer} navigation={navigation} />
+      </Animated.View>
       
       {/* Separated Welcome Banner Component */}
       <WelcomeBanner />

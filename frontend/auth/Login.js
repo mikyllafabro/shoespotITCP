@@ -55,41 +55,41 @@ const Login = () => {
       console.log(`Sending login request to: ${endpoint}`);
 
       const response = await axios.post(endpoint, {
-          email: email,
-          password: password,
+        email: email,
+        password: password,
       });
 
-    const data = response.data;
-    console.log('Login response:', data);
+      const data = response.data;
+      console.log('Login response:', data);
 
-    if (!data || !data.token) {
-      throw new Error('Invalid response from server');
-    }
+      if (!data || !data.token || !data.user) {
+        throw new Error('Invalid response from server');
+      }
 
-    console.log('Login successful, saving token and user data');
+      // Store user data with consistent key
       await SecureStore.setItemAsync('jwt', data.token);
-    
-      await SecureStore.setItemAsync('user', JSON.stringify(data.user || {}));
+      await SecureStore.setItemAsync('user', JSON.stringify({
+        id: data.user.id || data.user._id,
+        email: data.user.email,
+        name: data.user.name,
+        role: data.user.role,
+        firebaseUid: data.user.firebaseUid,
+        status: data.user.status,
+        userImage: data.user.userImage
+      }));
       
-      // Set Authorization header for future requests
+      // Set Authorization header
       axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
       
-      // Dispatch actions to Redux
-      dispatch(login(data.user || {}));
+      // Dispatch login with complete user data
+      const userData = {
+        user: data.user,
+        token: data.token
+      };
       
-      // Important: Use the proper action type from your auth reducer
-      dispatch({
-        type: 'SET_CURRENT_USER',
-        payload: {
-          user: data.user || {},
-          token: data.token,
-          isAuthenticated: true
-        }
-      });
+      dispatch(login(userData));
+      dispatch(setCurrentUser(userData));
       
-      // Log the updated state
-      console.log('Authentication successful! User should now be logged in');
-
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
