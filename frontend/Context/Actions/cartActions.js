@@ -249,21 +249,35 @@ export const removeFromCart = (orderId) => async (dispatch) => {
       throw new Error('Authentication token not found');
     }
 
-    await axios.delete(`${baseURL}/delete-order/${orderId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    console.log('Deleting order:', orderId);
+
+    const response = await axios.delete(
+      `${baseURL}/delete-order/${orderId}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
+
+    console.log('Delete response:', response.data);
 
     dispatch({
       type: REMOVE_FROM_CART,
       payload: orderId
     });
 
-    // Refresh cart count after removal
+    // Refresh order list after deletion
+    dispatch(getUserOrderList());
     dispatch(fetchCartCount());
 
   } catch (error) {
+    console.error('Delete error:', error.response?.data || error.message);
+    Alert.alert(
+      'Error',
+      'Failed to remove item from cart. Please try again.'
+    );
     dispatch({
       type: SET_CART_ERROR,
       payload: error.response?.data?.message || 'Failed to remove item'

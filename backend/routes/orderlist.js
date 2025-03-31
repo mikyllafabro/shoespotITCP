@@ -32,7 +32,10 @@ router.get('/user-orderlist', protect, async (req, res, next) => {
     console.log('OrderList Route - Fetching user order list for:', req.user?._id);
     next();
 }, getUserOrderList);
-router.delete('/delete-order/:orderId', protect, deleteOrder);
+router.delete('/delete-order/:orderId', protect, async (req, res, next) => {
+    console.log('Delete request received for order:', req.params.orderId);
+    next();
+}, deleteOrder);
 router.put('/update-order/:orderId', protect, updateOrderQuantity);
 
 module.exports = router;

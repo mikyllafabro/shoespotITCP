@@ -162,38 +162,39 @@ exports.getUserOrderList = async (req, res) => {
 
 exports.deleteOrder = async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Unauthorized: No token provided.' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decodedToken = await admin.auth().verifyIdToken(token);
-
-    // Find the user in MongoDB using Firebase UID
-    const user = await User.findOne({ firebaseUid: decodedToken.uid });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    // Extract the orderId from the request params
     const { orderId } = req.params;
+    const user = req.user; // From protect middleware
 
-    // Find and delete the order that matches the user and order ID
+    console.log('Attempting to delete order:', {
+      orderId,
+      userId: user._id
+    });
+
+    // Find and delete the order
     const deletedOrder = await OrderList.findOneAndDelete({
-      _id: orderId, // Match the order ID
-      user_id: user._id, // Match the MongoDB user ID
+      _id: orderId,
+      user_id: user._id // Ensure user owns this order
     });
 
     if (!deletedOrder) {
-      return res.status(404).json({ message: 'Order not found.' });
+      console.log('Order not found or unauthorized');
+      return res.status(404).json({ 
+        message: 'Order not found or unauthorized to delete' 
+      });
     }
 
-    res.status(200).json({ message: 'Order deleted successfully.', order: deletedOrder });
+    console.log('Order deleted successfully:', deletedOrder);
+    res.status(200).json({ 
+      message: 'Order deleted successfully',
+      orderId: orderId
+    });
+
   } catch (error) {
     console.error('Error deleting order:', error);
-    res.status(500).json({ message: 'Failed to delete order.', error });
+    res.status(500).json({ 
+      message: 'Failed to delete order',
+      error: error.message 
+    });
   }
 };
 
