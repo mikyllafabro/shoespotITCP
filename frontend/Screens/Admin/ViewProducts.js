@@ -19,93 +19,67 @@ import { PRODUCT_UPDATE_RESET, PRODUCT_DELETE_RESET } from '../../Context/Consta
 
 const ViewProducts = ({ navigation }) => {
     const dispatch = useDispatch();
-    const productList = useSelector(state => state.productList);
+    const productList = useSelector(state => state.productList || { loading: false, error: null, products: [] });
     const { loading, error, products } = productList;
 
-    useEffect(() => {
-        console.log('Component mounted, fetching products...');
-        fetchProducts();
-    }, []);
-
-    const fetchProducts = async () => {
-        try {
-            console.log('Dispatching listProducts action');
-            await dispatch(listProducts());
-        } catch (error) {
-            console.error('Error in fetchProducts:', error);
-            Alert.alert(
-                'Error',
-                'Failed to fetch products. Please try again.'
-            );
-        }
-    };
-
-    const productDelete = useSelector(state => state.productDelete);
+    const productDelete = useSelector(state => state.productDelete || { loading: false, success: false, error: null });
     const { loading: deleteLoading, success: deleteSuccess, error: deleteError } = productDelete;
-  
-    useEffect(() => {
-      fetchProducts();
-    }, [dispatch]);
-  
-    // Monitor delete success and refresh products list
-    useEffect(() => {
-      if (deleteSuccess) {
-        Alert.alert('Success', 'Product deleted successfully');
-        fetchProducts(); // Refresh the list after successful deletion
-      }
-      if (deleteError) {
-        Alert.alert('Error', deleteError);
-      }
-    }, [deleteSuccess, deleteError]);
-  
-    const handleDeleteProduct = (productId) => {
-      Alert.alert(
-        'Delete Product',
-        'Are you sure you want to delete this product?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Delete', 
-            style: 'destructive',
-            onPress: () => {
-              dispatch(deleteProduct(productId));
-            }
-          }
-        ]
-      );
-    };
 
     const handleEditProduct = (productId) => {
         // Reset any previous update state before navigation
         dispatch({ type: PRODUCT_UPDATE_RESET });
-        navigation.navigate('UpdateProduct', { 
-            productId: productId.toString() 
-        });
+        navigation.navigate('UpdateProduct', { productId: productId });
     };
 
-    // Clean up effect
+    const handleDeleteProduct = (productId) => {
+        Alert.alert(
+            'Delete Product',
+            'Are you sure you want to delete this product?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await dispatch(deleteProduct(productId));
+                        } catch (error) {
+                            console.error('Error deleting product:', error);
+                            Alert.alert('Error', 'Failed to delete product');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     useEffect(() => {
+        fetchProducts();
+        // Cleanup function
         return () => {
             dispatch({ type: PRODUCT_DELETE_RESET });
         };
-    }, []);
+    }, [dispatch]);
 
-    // Separate useEffect for delete success
+    const fetchProducts = async () => {
+        try {
+            await dispatch(listProducts());
+        } catch (error) {
+            console.error('Error in fetchProducts:', error);
+            Alert.alert('Error', 'Failed to fetch products. Please try again.');
+        }
+    };
+
     useEffect(() => {
         if (deleteSuccess) {
             Alert.alert('Success', 'Product deleted successfully');
             dispatch({ type: PRODUCT_DELETE_RESET });
             fetchProducts();
-        }
-    }, [deleteSuccess]);
-
-    // Separate useEffect for delete error
-    useEffect(() => {
-        if (deleteError) {
+        } else if (deleteError) {
             Alert.alert('Error', deleteError);
             dispatch({ type: PRODUCT_DELETE_RESET });
         }
-    }, [deleteError]);
+    }, [deleteSuccess, deleteError]);
 
   const renderItem = ({ item }) => (
     <View style={styles.productCard}>

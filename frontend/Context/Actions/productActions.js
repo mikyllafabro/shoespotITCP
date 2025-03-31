@@ -153,10 +153,14 @@ export const createProduct = (productData) => async (dispatch) => {
         throw new Error(response.data.message || 'Failed to create product');
     }
 
+    // Dispatch success action
     dispatch({
         type: PRODUCT_CREATE_SUCCESS,
         payload: response.data.product
     });
+
+    // Immediately refresh the products list
+    await dispatch(listProducts());
 
     return response.data.product;
   } catch (error) {

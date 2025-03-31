@@ -15,17 +15,21 @@ import CreateProduct from "../Screens/Admin/CreateProduct";
 import ViewProducts from "../Screens/Admin/ViewProducts";
 import UpdateProduct from "../Screens/Admin/UpdateProduct";
 import DeleteProduct from "../Screens/Admin/DeleteProduct";
+import ProductDetails from '../Screens/Products/ProductDetails';
 
 const Stack = createNativeStackNavigator();
 
-const selectAuth = state => state.auth ? {
-  isAuthenticated: state.auth.isAuthenticated,
-} : { isAuthenticated: false };
-
 const AppNavigator = () => {
-  const { isAuthenticated } = useSelector(state => state.auth || { isAuthenticated: false });
+  const { isAuthenticated, user } = useSelector(state => {
+    console.log("Redux auth state:", state.auth);
+    return {
+      isAuthenticated: state.auth?.isAuthenticated || false,
+      user: state.auth?.user || null
+    };
+  });
   
   console.log("AppNavigator - isAuthenticated:", isAuthenticated);
+  console.log("AppNavigator - user:", user);
 
     return (
       <NavigationContainer>
@@ -48,55 +52,72 @@ const AppNavigator = () => {
               component={Login} 
               options={{ headerShown: false }}
             />
-          <Stack.Screen 
+            <Stack.Screen 
               name="SignUp" 
               component={SignUp} 
               options={{ headerShown: false }}
             />
-          <Stack.Screen 
-                name="Sidebar" 
-                component={Sidebar} 
-                options={{ headerShown: false }}
-              />
-          <Stack.Screen 
-            name="AdminHome" 
-            component={AdminHome} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="AdminProducts" 
-            component={AdminProducts} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="CreateProduct" 
-            component={CreateProduct} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="ViewProducts" 
-            component={ViewProducts} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="UpdateProduct" 
-            component={UpdateProduct} 
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen 
-            name="DeleteProduct" 
-            component={DeleteProduct} 
-            options={{ headerShown: false }}
-          />
-            </>
+            <Stack.Screen 
+              name="Sidebar" 
+              component={Sidebar} 
+              options={{ headerShown: false }}
+            />
+          </>
         ) : (
-          <Stack.Screen 
-            name="MainApp" 
-            options={{ headerShown: false }}
-          >
-            {props => <SidebarContainer {...props} />}
-          </Stack.Screen>
+          <>
+            <Stack.Screen 
+              name="Home" 
+              component={Home}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Welcome" 
+              component={Welcome}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Login" 
+              component={Login}
+              options={{ headerShown: false }}
+            />
+          </>
         )}
+        {/* Admin screens - available regardless of auth state */}
+        <Stack.Screen 
+          name="AdminHome" 
+          component={AdminHome} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminProducts" 
+          component={AdminProducts} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="CreateProduct" 
+          component={CreateProduct} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="ViewProducts" 
+          component={ViewProducts} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="UpdateProduct" 
+          component={UpdateProduct} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="DeleteProduct" 
+          component={DeleteProduct} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="ProductDetails" 
+          component={ProductDetails} 
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
       </NavigationContainer>
     );

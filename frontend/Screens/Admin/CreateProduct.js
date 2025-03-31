@@ -22,8 +22,9 @@ import baseURL from '../../assets/common/baseUrl'; // Import baseURL
 
 const CreateProduct = ({ navigation }) => {
   const dispatch = useDispatch();
-  const productCreate = useSelector(state => state.productCreate);
-  const { loading, success, error } = productCreate || {};
+  const productCreate = useSelector(state => state.productCreate || {});
+  const { loading, success, error } = productCreate;
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
@@ -65,36 +66,104 @@ const CreateProduct = ({ navigation }) => {
     setDiscountedPrice('');
   };
 
-  // Update success handling
+  // Update success handling effect
   useEffect(() => {
     if (success) {
-      Alert.alert(
-        'Success',
-        'Product created successfully',
-        [
-          {
-            text: 'View Products',
-            onPress: () => {
-              resetForm();
-              dispatch({ type: 'PRODUCT_CREATE_RESET' });
-              navigation.replace('ViewProducts'); // Use replace instead of goBack
-            },
-          },
-          {
-            text: 'Create Another',
-            onPress: () => {
-              resetForm();
-              dispatch({ type: 'PRODUCT_CREATE_RESET' });
-            },
-          }
-        ]
-      );
+      console.log('Product created successfully');
+      setShowSuccessModal(true); // Show modal on success
+      setIsLoading(false);
     }
     if (error) {
       Alert.alert('Error', error);
       setIsLoading(false);
     }
-  }, [success, error, navigation]);
+  }, [success, error]);
+
+  const handleSubmit = async () => {
+    if (!name || !price || !description || !category || !stock || !brand) {
+        Alert.alert('Validation Error', 'Please fill all required fields');
+        return;
+    }
+
+    setIsLoading(true);
+
+    try {
+        const formattedData = {
+            name,
+            price: parseFloat(price),
+            description,
+            category,
+            stock: parseInt(stock),
+            brand,
+            status: 'Available',
+            discount: parseFloat(discount) || 0, // Ensure discount is passed
+            images: images.map(img => ({
+                uri: img.uri,
+                type: 'image/jpeg',
+                name: img.name || `image-${Date.now()}.jpg`
+            }))
+        };
+
+        const result = await dispatch(createProduct(formattedData));
+        if (result) {
+            setShowSuccessModal(true);
+            setIsLoading(false);
+        }
+    } catch (error) {
+        console.error('Error creating product:', error);
+        Alert.alert(
+            'Error',
+            error.response?.data?.message || 'Failed to create product'
+        );
+        setIsLoading(false);
+    }
+};
+
+  const handleSuccessModalClose = (shouldNavigate = false) => {
+    setShowSuccessModal(false);
+    dispatch({ type: 'PRODUCT_CREATE_RESET' });
+    if (shouldNavigate) {
+      navigation.navigate('ViewProducts');
+    } else {
+      resetForm();
+    }
+  };
+
+  // Add success modal component
+  const SuccessModal = () => (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={showSuccessModal}
+      onRequestClose={() => handleSuccessModalClose(false)}
+    >
+      <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+        <View style={[styles.modalContent, { width: '90%', maxWidth: 340 }]}>
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={80} color="#2ecc71" />
+          </View>
+          <Text style={[styles.modalTitle, { fontSize: 28 }]}>Success!</Text>
+          <Text style={[styles.modalText, { marginVertical: 15 }]}>
+            Product has been created successfully.
+          </Text>
+          <View style={[styles.modalButtons, { marginTop: 20 }]}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.viewProductsButton]}
+              onPress={() => handleSuccessModalClose(true)}
+            >
+              <Text style={styles.modalButtonText}>View Products</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.createAnotherButton]}
+              onPress={() => handleSuccessModalClose(false)}
+            >
+              <Text style={styles.modalButtonText}>Create Another</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   // Update the test connection function
   const testConnection = async () => {
@@ -184,45 +253,6 @@ const CreateProduct = ({ navigation }) => {
       setDiscountedPrice('');
     }
   }, [price, discount]);
-
-  const handleSubmit = async () => {
-    if (!name || !price || !description || !category || !stock || !brand) {
-        Alert.alert('Validation Error', 'Please fill all required fields');
-        return;
-    }
-
-    setIsLoading(true);
-
-    try {
-        const formattedData = {
-            name,
-            price: parseFloat(price),
-            description,
-            category,
-            stock: parseInt(stock),
-            brand,
-            status: 'Available',
-            discount: parseFloat(discount) || 0, // Ensure discount is passed
-            images: images.map(img => ({
-                uri: img.uri,
-                type: 'image/jpeg',
-                name: img.name || `image-${Date.now()}.jpg`
-            }))
-        };
-
-        console.log('Submitting product data:', formattedData);
-        await dispatch(createProduct(formattedData));
-        
-    } catch (error) {
-        console.error('Error creating product:', error);
-        Alert.alert(
-            'Error',
-            error.response?.data?.message || 'Failed to create product'
-        );
-    } finally {
-        setIsLoading(false);
-    }
-};
 
   // Add Brand Selection Modal
   const BrandSelectionModal = () => (
@@ -456,6 +486,7 @@ const CreateProduct = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <SuccessModal />
     </View>
   );
 };
@@ -572,17 +603,51 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
+    borderRadius: 15,
+    padding: 25,
+    alignItems: 'center',
     width: '80%',
-    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 15,
+    color: '#2ecc71',
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
-    color: '#1a56a4',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  viewProductsButton: {
+    backgroundColor: '#1a56a4',
+  },
+  createAnotherButton: {
+    backgroundColor: '#2ecc71',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   brandOption: {
     padding: 15,
@@ -677,6 +742,12 @@ const styles = StyleSheet.create({
   savingsText: {
     fontSize: 14,
     color: '#388e3c',
+  },
+  successIconContainer: {
+    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+    borderRadius: 50,
+    padding: 15,
+    marginBottom: 15,
   },
 });
 export default CreateProduct;

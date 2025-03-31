@@ -38,6 +38,7 @@ const UpdateProduct = ({ navigation, route }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const validBrands = ['Adidas', 'Nike', 'Converse'];
   const validCategories = ['Running', 'Basketball', 'Casual', 'Training', 'Lifestyle'];
@@ -71,16 +72,16 @@ const UpdateProduct = ({ navigation, route }) => {
   // Monitor success and error from redux
   useEffect(() => {
     if (success) {
-      Alert.alert('Success', 'Product updated successfully');
+      setShowSuccessModal(true);
       setIsSubmitting(false);
+      // Reset update status
       dispatch({ type: PRODUCT_UPDATE_RESET });
-      navigation.goBack();
     }
     if (error) {
       Alert.alert('Error', error);
       setIsSubmitting(false);
     }
-  }, [success, error, navigation]);
+  }, [success, error]);
 
   // Add effect to calculate discounted price
   useEffect(() => {
@@ -175,7 +176,7 @@ const UpdateProduct = ({ navigation, route }) => {
     setImages(updatedImages);
   };
 
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     // Validate form fields
     if (!name || !price) {
       Alert.alert('Validation Error', 'Please fill all required fields');
@@ -197,11 +198,15 @@ const UpdateProduct = ({ navigation, route }) => {
     };
 
     try {
-      dispatch(updateProduct(productId, productData));
+      const result = await dispatch(updateProduct(productId, productData));
+      if (result) {
+        setShowSuccessModal(true);
+      }
     } catch (error) {
       console.error('Error updating product:', error);
-      setIsSubmitting(false);
       Alert.alert('Error', 'Failed to update product');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -313,6 +318,49 @@ const UpdateProduct = ({ navigation, route }) => {
       </Text>
       <Ionicons name="chevron-down" size={24} color="#666" />
     </TouchableOpacity>
+  );
+
+  const handleSuccessModalClose = (shouldNavigate = false) => {
+    setShowSuccessModal(false);
+    if (shouldNavigate) {
+      navigation.goBack();
+    }
+  };
+
+  // Add success modal component
+  const SuccessModal = () => (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={showSuccessModal}
+      onRequestClose={() => handleSuccessModalClose(false)}
+    >
+      <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+        <View style={[styles.modalContent, { width: '90%', maxWidth: 340 }]}>
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={80} color="#2ecc71" />
+          </View>
+          <Text style={[styles.modalTitle, { fontSize: 28 }]}>Success!</Text>
+          <Text style={[styles.modalText, { marginVertical: 15 }]}>
+            Product has been updated successfully.
+          </Text>
+          <View style={[styles.modalButtons, { marginTop: 20 }]}>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.viewProductsButton]}
+              onPress={() => handleSuccessModalClose(true)}
+            >
+              <Text style={styles.modalButtonText}>Back to Products</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.createAnotherButton]}
+              onPress={() => handleSuccessModalClose(false)}
+            >
+              <Text style={styles.modalButtonText}>Continue Editing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 
   if (isLoading) {
@@ -473,6 +521,7 @@ const UpdateProduct = ({ navigation, route }) => {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <SuccessModal />
     </View>
   );
 };
@@ -673,6 +722,41 @@ const styles = StyleSheet.create({
   savingsText: {
     fontSize: 14,
     color: '#388e3c',
+  },
+  successIconContainer: {
+    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+    borderRadius: 50,
+    padding: 15,
+    marginBottom: 15,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    alignItems: 'center',
+  },
+  viewProductsButton: {
+    backgroundColor: '#1a56a4',
+  },
+  createAnotherButton: {
+    backgroundColor: '#2ecc71',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

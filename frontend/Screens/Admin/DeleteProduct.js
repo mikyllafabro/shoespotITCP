@@ -8,7 +8,8 @@ import {
   StatusBar, 
   ActivityIndicator,
   Alert,
-  Image
+  Image,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -18,6 +19,8 @@ const DeleteProduct = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [deletedProductName, setDeletedProductName] = useState('');
 
   useEffect(() => {
     fetchProducts();
@@ -51,17 +54,27 @@ const DeleteProduct = ({ navigation }) => {
   const deleteProduct = async (productId) => {
     setIsDeleting(true);
     try {
-      // Replace with your actual API endpoint
+      // Get product name before deletion
+      const productToDelete = products.find(p => p._id === productId);
+      if (!productToDelete) throw new Error('Product not found');
+
       await axios.delete(`https://your-api-endpoint/api/products/${productId}`);
       
-      // Remove the product from local state
-      setProducts(products.filter(p => p._id !== productId));
-      Alert.alert('Success', 'Product deleted successfully');
+      // After successful deletion
+      setProducts(prev => prev.filter(p => p._id !== productId));
+      setDeletedProductName(productToDelete.name);
+      setShowSuccessModal(true); // Show modal immediately after successful deletion
     } catch (err) {
       Alert.alert('Error', 'Failed to delete product');
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  // Add a handler for modal close
+  const handleModalClose = () => {
+    setShowSuccessModal(false);
+    setDeletedProductName('');
   };
 
   const renderItem = ({ item }) => (
@@ -93,6 +106,34 @@ const DeleteProduct = ({ navigation }) => {
         <Ionicons name="trash-outline" size={24} color="white" />
       </TouchableOpacity>
     </View>
+  );
+
+  // Update the Success Modal Component
+  const SuccessModal = () => (
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={showSuccessModal}
+      onRequestClose={handleModalClose}
+    >
+      <View style={[styles.modalContainer, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+        <View style={[styles.modalContent, { width: '90%', maxWidth: 340 }]}>
+          <View style={styles.successIconContainer}>
+            <Ionicons name="checkmark-circle" size={80} color="#2ecc71" />
+          </View>
+          <Text style={styles.modalTitle}>Deleted Successfully!</Text>
+          <Text style={styles.modalText}>
+            "{deletedProductName}" has been removed from your inventory.
+          </Text>
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={handleModalClose}
+          >
+            <Text style={styles.modalButtonText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 
   return (
@@ -145,6 +186,8 @@ const DeleteProduct = ({ navigation }) => {
           <Text style={styles.loadingText}>Deleting...</Text>
         </View>
       )}
+
+      <SuccessModal />
     </View>
   );
 };
@@ -271,7 +314,56 @@ const styles = StyleSheet.create({
     color: 'white',
     marginTop: 10,
     fontSize: 16,
-  }
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  successIconContainer: {
+    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+    borderRadius: 50,
+    padding: 15,
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2ecc71',
+    marginTop: 15,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  modalButton: {
+    backgroundColor: '#1a56a4',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default DeleteProduct;

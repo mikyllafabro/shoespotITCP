@@ -7,8 +7,11 @@ import {
   TouchableOpacity 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
-const Header = ({ toggleDrawer, navigation }) => {
+const Header = ({ toggleDrawer }) => {
+  const navigation = useNavigation();
+
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
@@ -29,12 +32,21 @@ const Header = ({ toggleDrawer, navigation }) => {
         </View>
       </View>
       
-      <TouchableOpacity 
-        style={styles.cartButton}
-        onPress={() => navigation?.navigate('Cart')}
-      >
-        <Ionicons name="cart-outline" size={24} color="white" />
-      </TouchableOpacity>
+      <View style={styles.headerRight}>
+        <TouchableOpacity 
+          style={styles.cartButton}
+          onPress={() => navigation.navigate('Cart')}
+        >
+          <Ionicons name="cart-outline" size={24} color="white" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.adminButton}
+          onPress={() => navigation.navigate('AdminHome')}
+        >
+          <Ionicons name="settings-outline" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -70,7 +82,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   cartButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  adminButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',

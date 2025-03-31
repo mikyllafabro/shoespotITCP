@@ -1,28 +1,44 @@
-import { LOGIN, LOGOUT, REGISTER_SUCCESS } from "../Actions/Auth.actions";
+import { LOGIN, LOGIN_FAIL, LOGOUT, SET_CURRENT_USER, REGISTER_SUCCESS } from "../Actions/Auth.actions";
 
 const initialState = {
   user: null,
-  token: null,
   isAuthenticated: false,
-  loading: true,
+  // loading: true,
+  token: null,
 };
 
-const authReducer = (state = initialState, action) => {
+  export const authReducer = (state = initialState, action) => {
+    console.log("Auth reducer received action:", action.type, action.payload);
+    
   switch (action.type) {
-    case LOGIN:
+      case LOGIN:
+        return {
+          ...state,
+          user: action.payload,
+          isAuthenticated: true
+          // Note: We're not setting isAuthenticated here because that's done by SET_CURRENT_USER
+        };
+        case LOGIN_FAIL:
+      // Fix: Handle the case when payload might not exist
       return {
         ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        isAuthenticated: true,
-        loading: false,
+        // loading: false,
+        error: action.payload || "Login failed",
+        isAuthenticated: false
       };
+      case SET_CURRENT_USER:
+        console.log("SET_CURRENT_USER action received with payload:", action.payload);
+        return {
+          ...state,
+          user: action.payload.user,
+          token: action.payload.token,
+          isAuthenticated: true
+        };
     case REGISTER_SUCCESS:
       return {
         ...state,
         user: action.payload,
-        isAuthenticated: false,
-        loading: false,
+        isAuthenticated: true,
       };
     case LOGOUT:
       return {
@@ -30,26 +46,10 @@ const authReducer = (state = initialState, action) => {
         user: null,
         token: null,
         isAuthenticated: false,
-        loading: false,
-      };
-      case 'SET_LOADING':
-        return {
-          ...state,
-          loading: action.payload,
-        };
-      case SET_CURRENT_USER:
-        // Add logging to see what's in the payload
-        console.log("SET_CURRENT_USER payload:", action.payload);
-        
-        return {
-          ...state,
-          isAuthenticated: true,
-          user: action.payload,
-          userLoading: false
-        };
+      }
       default:
         return state;
   }
-};
+}
 
 export default authReducer;

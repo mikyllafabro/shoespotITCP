@@ -120,7 +120,7 @@ import {
   SafeAreaView
 } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Home from '../Screens/Home';
+import Home from '../Screens/Home/Home';
 import Sidebar from '../Shared/Stylesheets/Sidebar';
 
 const Stack = createNativeStackNavigator();

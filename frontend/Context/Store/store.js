@@ -10,12 +10,15 @@
 
 // export default store;
 
-import { createStore, combineReducers, applyMiddleware, compose } from 'redux';
-import thunkMiddleware from 'redux-thunk';
+import { legacy_createStore as createStore, combineReducers, applyMiddleware } from 'redux';
+import { thunk } from 'redux-thunk';
 import authReducer from '../Reducers/Auth.reducer';
+import { productListReducer } from '../Reducers/productReducers'
+import { composeWithDevTools } from 'redux-devtools-extension';
 
 const rootReducer = combineReducers({
   auth: authReducer,
+  productList: productListReducer,
 });
 
 const initialState = {
@@ -29,6 +32,6 @@ const initialState = {
 };
 
 // Create store without middleware temporarily
-const store = createStore(rootReducer, initialState, composewithDevTools(applyMiddleware(thunkMiddleware)));
+const store = createStore(rootReducer, initialState, composeWithDevTools(applyMiddleware(thunk)));
 
 export default store;

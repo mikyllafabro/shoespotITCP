@@ -1,11 +1,12 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import jwtDecode from 'jwt-decode';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
+import axios from 'axios';
 import baseUrl from '../assets/common/baseUrl';
-import { login } from '../Context/Actions/Auth.actions';
+import { login, setCurrentUser } from '../Context/Actions/Auth.actions';
 
 const Login = () => {
   const navigation = useNavigation();
@@ -14,6 +15,33 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
+
+  useEffect(() => {
+    const checkExistingToken = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('jwt');
+        const userData = await SecureStore.getItemAsync('user');
+        
+        if (token && userData) {
+          const user = JSON.parse(userData);
+          console.log('Found existing token and user data');
+          
+          // Update Redux state with cached credentials
+          dispatch(login(user));
+          dispatch(setCurrentUser({
+            user: user,
+            token: token,
+            isAuthenticated: true
+          }));
+        }
+      } catch (error) {
+        console.error('Error checking stored credentials:', error);
+      }
+    };
+    
+    checkExistingToken();
+  }, [dispatch]);
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter both email and password");
@@ -23,61 +51,64 @@ const Login = () => {
     setLoading(true);
 
     try {
-      console.log(`Sending login request to: ${baseUrl}/auth/login`);
+      const endpoint = `${baseUrl}/auth/login`;
+      console.log(`Sending login request to: ${endpoint}`);
 
-      const response = await fetch(`${baseUrl}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
+      const response = await axios.post(endpoint, {
           email: email,
           password: password,
-        }),
       });
 
-      // Better error handling - similar to your SignUp.js
-    const contentType = response.headers.get("content-type");
-    console.log(`Login response status: ${response.status}, Content-Type: ${contentType}`);
-    
-    // Get response as text first
-    const responseText = await response.text();
-    
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (error) {
-      console.error('Response is not valid JSON:', responseText.substring(0, 200));
-      throw new Error(`Server returned invalid JSON. Status: ${response.status}`);
+    const data = response.data;
+    console.log('Login response:', data);
+
+    if (!data || !data.token) {
+      throw new Error('Invalid response from server');
     }
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Invalid credentials');
-      }
 
-      console.log('Login successful, saving token and user data');
-
-      // Store JWT token in SecureStore
-    if (data.token) {
+    console.log('Login successful, saving token and user data');
       await SecureStore.setItemAsync('jwt', data.token);
-      console.log('JWT token stored in SecureStore');
-    }
     
-    // Store Firebase token if available
-    if (data.firebaseToken) {
-      await SecureStore.setItemAsync('firebaseToken', data.firebaseToken);
-      console.log('Firebase token stored in SecureStore');
-    }
-      // Dispatch login action to Redux
-      dispatch(login(data.user));
+      await SecureStore.setItemAsync('user', JSON.stringify(data.user || {}));
+      
+      // Set Authorization header for future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      
+      // Dispatch actions to Redux
+      dispatch(login(data.user || {}));
+      
+      // Important: Use the proper action type from your auth reducer
+      dispatch({
+        type: 'SET_CURRENT_USER',
+        payload: {
+          user: data.user || {},
+          token: data.token,
+          isAuthenticated: true
+        }
+      });
+      
+      // Log the updated state
+      console.log('Authentication successful! User should now be logged in');
 
-
-      // Navigate to home screen
-      navigation.navigate('Home');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+      
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert("Login Failed", error.message);
+      let errorMessage = 'Login failed';
+      
+      if (error.response) {
+        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
+        console.log('Error response data:', error.response.data);
+      } else if (error.request) {
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert("Login Failed", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,7 +117,7 @@ const Login = () => {
   return (
     <KeyboardAvoidingView 
       style={styles.container}
-      behavior={Platform.OS === "android" ? "padding" : "height"}
+      behavior={Platform.OS === "android" ? "padding" : null}
     >
       <View style={styles.logoContainer}>
         <Image
@@ -105,6 +136,7 @@ const Login = () => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          testID="email-input"
         />
         
         <TextInput
@@ -113,15 +145,21 @@ const Login = () => {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          testID="password-input"
         />
         
-        <TouchableOpacity style={styles.forgotPassword}>
-          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={handleLogin}
+          disabled={loading}
+          testID="login-button"
+        >
+          {loading ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
           <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
+          )}
+          </TouchableOpacity>
       </View>
       
       <View style={styles.footer}>
