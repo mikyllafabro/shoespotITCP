@@ -163,15 +163,15 @@ const styles = StyleSheet.create({
   discountedPrice: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ff9900',
+    color: '#3b82f6',
   },
   price: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ff9900',
+    color: '#3b82f6',
   },
   discountBadge: {
-    backgroundColor: '#ff9900',
+    backgroundColor: '#3b82f6',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   quantityButton: {
-    backgroundColor: '#ff9900',
+    backgroundColor: '#3b82f6',
     width: 35,
     height: 35,
     justifyContent: 'center',
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   addButton: {
-    backgroundColor: '#ff9900',
+    backgroundColor: '#3b82f6',
     padding: 15,
     borderRadius: 10,
     width: '100%',
