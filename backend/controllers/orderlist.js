@@ -228,3 +228,46 @@ exports.updateOrderQuantity = async (req, res) => {
     res.status(500).json({ message: 'Failed to update order quantity.' });
   }
 };
+
+exports.deleteOrderedProducts = async (req, res) => {
+  try {
+    const { orderIds } = req.body;
+    const user = req.user; // From protect middleware
+
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({ 
+        message: 'Invalid request. Please provide an array of order IDs.'
+      });
+    }
+
+    console.log('Deleting orders:', {
+      orderIds,
+      userId: user._id
+    });
+
+    const result = await OrderList.deleteMany({
+      _id: { $in: orderIds },
+      user_id: user._id
+    });
+
+    console.log('Delete result:', result);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ 
+        message: 'No matching orders found to delete.'
+      });
+    }
+
+    res.status(200).json({
+      message: 'Orders removed successfully',
+      deletedCount: result.deletedCount
+    });
+
+  } catch (error) {
+    console.error('Error deleting orders:', error);
+    res.status(500).json({
+      message: 'Failed to delete orders',
+      error: error.message
+    });
+  }
+};

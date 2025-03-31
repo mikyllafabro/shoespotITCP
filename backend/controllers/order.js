@@ -37,6 +37,18 @@ exports.placeOrder = async (req, res) => {
     await order.save();
     console.log('Order saved:', order);
 
+    // Remove ordered items from cart
+    try {
+      const productIds = products.map(p => p.productId);
+      await OrderList.deleteMany({
+        user_id: userId,
+        product_id: { $in: productIds }
+      });
+    } catch (deleteError) {
+      console.error('Error removing items from cart:', deleteError);
+      // Don't throw error, just log it since order was successful
+    }
+
     res.status(201).json({
       message: 'Order placed successfully',
       order,
@@ -70,32 +82,50 @@ exports.getUserOrders = async (req, res) => {
 
 exports.deleteOrderedProducts = async (req, res) => {
   try {
-    const { userId, productIds } = req.body;
+    const { orderIds } = req.body;
+    const user = req.user;
 
-    // Validate inputs
-    if (!userId || !Array.isArray(productIds) || productIds.length === 0) {
-      return res.status(400).json({ message: 'Invalid request data. Ensure userId and productIds are provided.' });
-    }
-
-    // Resolve MongoDB _id from Firebase UID
-    const user = await User.findOne({ firebaseUid: userId });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    // Perform delete operation using resolved user._id
-    const result = await OrderList.deleteMany({
-      user_id: user._id,
-      product_id: { $in: productIds },
+    console.log('Processing delete request:', {
+      orderIds,
+      userId: user._id
     });
 
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ message: 'No matching products found to delete.' });
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+      return res.status(400).json({
+        message: 'Invalid request. Please provide an array of order IDs.'
+      });
     }
 
-    res.status(200).json({ message: 'Ordered products removed successfully.' });
+    // Delete orders that belong to the user
+    const result = await OrderList.deleteMany({
+      _id: { $in: orderIds },
+      user_id: user._id
+    });
+
+    console.log('Delete operation result:', {
+      attempted: orderIds.length,
+      deleted: result.deletedCount
+    });
+
+    // Only send success if we actually deleted something
+    if (result.deletedCount > 0) {
+      return res.status(200).json({
+        message: `Successfully removed ${result.deletedCount} items from cart`,
+        deletedCount: result.deletedCount
+      });
+    }
+
+    // If nothing was deleted, send a 404
+    return res.status(404).json({
+      message: 'No matching orders found to delete',
+      attempted: orderIds
+    });
+
   } catch (error) {
-    console.error('Error removing ordered products:', error);
-    res.status(500).json({ message: 'Internal server error.' });
+    console.error('Error deleting ordered products:', error);
+    res.status(500).json({ 
+      message: 'Failed to remove items from cart',
+      error: error.message 
+    });
   }
 };

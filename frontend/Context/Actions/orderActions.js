@@ -162,6 +162,11 @@ export const placeOrder = (orderData, navigation) => async (dispatch) => {
 
     console.log('Submitting order:', formattedOrderData);
 
+    // Get the order IDs from selectedOrders before placing order
+    const orderIds = orderData.products.map(product => product.orderId).filter(Boolean);
+    console.log('Order IDs to delete:', orderIds);
+
+    // Place order first
     const orderResponse = await axios.post(
       `${baseURL}/place-order`,
       formattedOrderData,
@@ -175,14 +180,25 @@ export const placeOrder = (orderData, navigation) => async (dispatch) => {
 
     console.log('Order response:', orderResponse.data);
 
-    dispatch({ 
-      type: CREATE_ORDER_SUCCESS, 
-      payload: orderResponse.data.order 
-    });
-    
-    // Clear cart and navigate home
-    dispatch(clearCartData());
-    
+    // After successful order, remove ordered items from cart
+    if (orderIds.length > 0) {
+      try {
+        const deleteResponse = await axios.delete(`${baseURL}/delete-ordered-products`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: { orderIds }
+        });
+        console.log('Delete response:', deleteResponse.data);
+      } catch (deleteError) {
+        console.error('Error removing items from cart:', deleteError.response?.data || deleteError);
+      }
+    }
+
+    dispatch({ type: CREATE_ORDER_SUCCESS, payload: orderResponse.data.order });
+    dispatch(clearCartData()); // Clear cart in Redux
+
     Alert.alert(
       'Success',
       'Order placed successfully!',
