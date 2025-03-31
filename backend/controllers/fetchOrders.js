@@ -23,69 +23,36 @@ const getOrdersData = async (req, res) => {
 
 const getAllOrders = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const orders = await Order.find()
+      .populate('userId', 'email')
+      .populate('products.productId', 'name price discount discountedPrice')  // Add discount fields
+      .sort({ createdAt: -1 });
 
-   
-    if (startDate && isNaN(Date.parse(startDate))) {
-      return res.status(400).json({ message: "Invalid startDate format" });
-    }
-    if (endDate && isNaN(Date.parse(endDate))) {
-      return res.status(400).json({ message: "Invalid endDate format" });
-    }
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      email: order.userId ? order.userId.email : 'N/A',
+      status: order.status || 'pending',
+      paymentMethod: order.paymentMethod,
+      products: order.products.map(prod => {
+        const product = prod.productId;
+        const finalPrice = product ? 
+          (product.discountedPrice || product.price) : 0;  // Use discounted price if available
+        
+        return {
+          name: product ? product.name : 'Product Unavailable',
+          quantity: prod.quantity,
+          price: finalPrice,
+          hasDiscount: product ? !!product.discount : false,
+          originalPrice: product ? product.price : 0
+        };
+      }),
+      total: order.total,
+      createdAt: order.createdAt
+    }));
 
-    const query = {};
-    if (startDate) {
-      query.createdAt = { $gte: new Date(startDate) };
-    }
-    if (endDate) {
-      query.createdAt = query.createdAt || {};
-      query.createdAt.$lte = new Date(endDate);
-    }
-
-    const orders = await Order.find(query)
-      .populate('products.productId')
-      .populate('userId');
-
-    const ordersByMonth = orders.reduce((acc, order) => {
-      const month = new Date(order.createdAt).toLocaleString('default', { month: 'long', year: 'numeric' });
-
-      if (!acc[month]) {
-        acc[month] = { month, products: {} };
-      }
-
-      order.products.forEach(product => {
-    
-        if (!product.productId) {
-          console.warn(`Product ID is null for order ${order._id}`);
-          return;
-        }
-
-        const productId = product.productId._id.toString();
-        if (!acc[month].products[productId]) {
-          acc[month].products[productId] = { name: product.productId.name, quantity: 0 };
-        }
-        acc[month].products[productId].quantity += product.quantity;
-      });
-
-      return acc;
-    }, {});
-
-    // Format the grouped data into the required response structure
-    const groupedOrders = Object.values(ordersByMonth).map(monthData => {
-      const mostBoughtProduct = Object.values(monthData.products).reduce((max, product) => {
-        return product.quantity > max.quantity ? product : max;
-      }, { name: '', quantity: 0 });
-
-      return {
-        month: monthData.month,
-        mostBoughtProduct: mostBoughtProduct.name,
-        quantity: mostBoughtProduct.quantity,
-      };
-    });
-
-    res.json(groupedOrders);
+    res.json(formattedOrders);
   } catch (error) {
-    console.error("Error in getAllOrders:", error.stack); // Log full error details
+    console.error("Error in getAllOrders:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -129,57 +96,56 @@ const getAllStatuses = async (req, res) => {
     }
   };
 
-  const updateOrderStatus = async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const { status } = req.body;
-  
-      // Find and update the order status
-      const updatedOrder = await Order.findByIdAndUpdate(
-        orderId,
-        { status },
-        { new: true }
-      );
-  
-      if (!updatedOrder) {
-        return res.status(404).json({ message: 'Order not found' });
-      }
-  
-      // Get the user who placed the order (assuming the userId is stored in the order)
-      const user = await User.findById(updatedOrder.userId); // Adjust this based on your Order schema
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      // Send a push notification to the user
-      const fcmToken = user.fcmToken;
-      if (fcmToken) {
-        const payload = {
-          notification: {
-            title: 'Order Status Updated',
-            body: `Your order ${orderId} has been ${status}.`,
-          },
-          token: fcmToken,
-          data: {
-          userId: updatedOrder.userId.toString(),
-          orderId: orderId.toString(),
-          },
-        };
-  
-        // Send notification via FCM
-        await admin.messaging().send(payload);
-        console.log('Notification sent successfully');
-      } else {
-        console.log('FCM token not found for the user');
-      }
-  
-      // Respond with the updated order
-      res.json(updatedOrder);
-    } catch (error) {
-      console.error('Error updating order status:', error);
-      res.status(500).json({ message: 'Internal server error' });
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    const userId = req.user?._id;
+
+    console.log('Updating order status:', {
+      orderId,
+      status,
+      userId,
+      params: req.params,
+      body: req.body
+    });
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order ID is required'
+      });
     }
-  };
-  
-  
-  module.exports = { getOrdersData, getAllOrders, getAllStatuses, updateOrderStatus };
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    order.status = status;
+    await order.save();
+
+    console.log('Order updated successfully:', {
+      id: order._id,
+      newStatus: order.status
+    });
+
+    res.json({
+      success: true,
+      message: 'Order status updated successfully',
+      order
+    });
+
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update order status'
+    });
+  }
+};
+
+module.exports = { getOrdersData, getAllOrders, getAllStatuses, updateOrderStatus };

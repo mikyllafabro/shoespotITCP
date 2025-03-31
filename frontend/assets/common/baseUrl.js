@@ -3,10 +3,8 @@ import { Platform } from 'react-native';
 let baseURL = '';
 
 if (Platform.OS === 'android') {
-    // Update this to match your backend URL structure
-baseURL = 'http://192.168.1.100:5000/api/v1';  // Your actual IP address  
+    baseURL = 'http://192.168.1.100:5000/api/v1';  // Make sure this matches your MongoDB server
 } else {
-    // For iOS
     baseURL = 'http://localhost:5000/api/v1';
 }
 

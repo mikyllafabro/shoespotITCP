@@ -1,10 +1,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/UserModel');
-const createError = require('../utils/error');
 
-const auth = async (req, res, next) => {
+const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    console.log('Auth header:', authHeader);
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
@@ -13,11 +13,11 @@ const auth = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
+    console.log('Token received:', token ? 'Present' : 'Missing');
 
-    // Verify JWT token (not Firebase token)
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'shoespot');
-    
-    // Find user in MongoDB
+    console.log('Decoded token:', decoded);
+
     const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(401).json({
@@ -25,15 +25,23 @@ const auth = async (req, res, next) => {
       });
     }
 
-    // Attach user to request object
+    // Add user info to request
     req.user = user;
+    req.userId = user._id;
+    
+    console.log('User authenticated:', {
+      userId: user._id,
+      email: user.email
+    });
+
     next();
   } catch (error) {
-    console.error('Auth Middleware Error:', error);
+    console.error('Auth Error:', error);
     res.status(401).json({
-      message: 'Authentication failed'
+      message: 'Authentication failed',
+      error: error.message
     });
   }
 };
 
-module.exports = auth;
+module.exports = protect;

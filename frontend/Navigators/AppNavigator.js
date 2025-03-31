@@ -18,6 +18,7 @@ import DeleteProduct from "../Screens/Admin/DeleteProduct";
 import ProductDetails from '../Screens/Products/ProductDetails';
 import CartScreen from '../Screens/Cart/CartScreen';
 import Confirm from '../Screens/Cart/Checkout/Confirm';
+import AdminOrders from "../Screens/Admin/AdminOrders";
 
 const Stack = createNativeStackNavigator();
 
@@ -146,6 +147,11 @@ const AppNavigator = () => {
         <Stack.Screen 
           name="ProductDetails" 
           component={ProductDetails} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminOrders" 
+          component={AdminOrders} 
           options={{ headerShown: false }}
         />
       </Stack.Navigator>

@@ -1,21 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const protect = require('../middleware/auth');
-const { updateOrderStatus } = require('../controllers/fetchOrders');
 const sendOrderConfirmationEmail = require('../controllers/sendEmail');
 
-
-const { placeOrder,
-    getUserOrders,
-    // deleteOrderedProducts } = require('../controllers/order');
-    deleteOrderedProducts
-    // updateOrderStatus,
-
-} = require('../controllers/order');
+const { placeOrder, getUserOrders, deleteOrderedProducts } = require('../controllers/order');
+const { updateOrderStatus } = require('../controllers/fetchOrders');
 
 router.post('/place-order', protect, placeOrder);
 router.get('/user-orders/:userId', protect, getUserOrders);
 router.delete('/delete-ordered-products', protect, deleteOrderedProducts);
+
+// Fix the status update route
+router.patch('/order/:orderId/status', protect, (req, res) => {
+  console.log('Status update route hit:', {
+    orderId: req.params.orderId,
+    status: req.body.status,
+    user: req.user?._id,
+    params: req.params
+  });
+  updateOrderStatus(req, res);
+});
+
+// Add a route to get all orders
+router.get('/orders', protect, async (req, res) => {
+  try {
+    console.log('Getting all orders, user:', req.user._id);
+    const orders = await Order.find()
+      .populate('userId', 'email')
+      .sort('-createdAt');
+    res.json(orders);
+  } catch (error) {
+    console.error('Error getting orders:', error);
+    res.status(500).json({ message: 'Failed to get orders' });
+  }
+});
 
 router.post('/send-order-confirmation', protect, async (req, res) => {
     const { email, orderDetails } = req.body;
