@@ -71,6 +71,9 @@ app.use('/api/v1', orderListRoutes);
 
 app.use('/api/v1', orderRoutes);
 
+// Mount order routes
+app.use('/api/v1/order', require('./routes/order'));
+
 app.use('/api/v1', order);
 
 

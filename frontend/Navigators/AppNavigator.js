@@ -19,6 +19,7 @@ import ProductDetails from '../Screens/Products/ProductDetails';
 import CartScreen from '../Screens/Cart/CartScreen';
 import Confirm from '../Screens/Cart/Checkout/Confirm';
 import AdminOrders from "../Screens/Admin/AdminOrders";
+import HomeTransactions from "../Screens/Transactions/HomeTransactions";
 
 const Stack = createNativeStackNavigator();
 
@@ -110,6 +111,11 @@ const AppNavigator = () => {
                   fontWeight: 'bold',
                 },
               }}
+            />
+            <Stack.Screen 
+              name="Transactions" 
+              component={HomeTransactions}
+              options={{ headerShown: false }}
             />
           </>
         )}

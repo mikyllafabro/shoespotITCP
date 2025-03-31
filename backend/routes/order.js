@@ -3,12 +3,15 @@ const router = express.Router();
 const protect = require('../middleware/auth');
 const sendOrderConfirmationEmail = require('../controllers/sendEmail');
 
-const { placeOrder, getUserOrders, deleteOrderedProducts } = require('../controllers/order');
-const { updateOrderStatus } = require('../controllers/fetchOrders');
+const { placeOrder, deleteOrderedProducts } = require('../controllers/order');
+const { getOrdersData, getAllOrders, getAllStatuses, updateOrderStatus, getUserOrders } = require('../controllers/fetchOrders');
 
 router.post('/place-order', protect, placeOrder);
 router.get('/user-orders/:userId', protect, getUserOrders);
 router.delete('/delete-ordered-products', protect, deleteOrderedProducts);
+
+// Move this route before the dynamic routes to prevent conflicts
+router.get('/me', protect, getUserOrders);
 
 // Fix the status update route
 router.patch('/order/:orderId/status', protect, (req, res) => {
@@ -34,6 +37,9 @@ router.get('/orders', protect, async (req, res) => {
     res.status(500).json({ message: 'Failed to get orders' });
   }
 });
+
+// Remove or comment out the duplicate route
+// router.get('/orders/me', protect, getUserOrders);
 
 router.post('/send-order-confirmation', protect, async (req, res) => {
     const { email, orderDetails } = req.body;

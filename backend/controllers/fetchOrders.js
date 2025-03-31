@@ -148,4 +148,38 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-module.exports = { getOrdersData, getAllOrders, getAllStatuses, updateOrderStatus };
+const getUserOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ userId: req.user._id })
+      .populate('products.productId', 'name price images discount discountedPrice')
+      .sort('-createdAt');
+    
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      orderItems: order.products.map(prod => ({
+        name: prod.productId?.name || 'Product Unavailable',
+        quantity: prod.quantity,
+        price: prod.productId?.discountedPrice || prod.productId?.price || 0,
+        image: prod.productId?.images?.[0]?.url || null
+      })),
+      totalPrice: order.products.reduce((total, prod) => {
+        return total + ((prod.productId?.discountedPrice || prod.productId?.price || 0) * prod.quantity);
+      }, 0),
+      orderStatus: order.status,
+      createdAt: order.createdAt
+    }));
+
+    res.json({ success: true, orders: formattedOrders });
+  } catch (error) {
+    console.error("Error in getUserOrders:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch orders" });
+  }
+};
+
+module.exports = { 
+  getOrdersData, 
+  getAllOrders, 
+  getAllStatuses, 
+  updateOrderStatus, 
+  getUserOrders 
+};

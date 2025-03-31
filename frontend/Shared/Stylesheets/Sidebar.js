@@ -228,10 +228,10 @@ const Sidebar = ({ closeSidebar }) => {
           <Text style={styles.menuText}>Profile</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Orders')}>
+        {/* <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Orders')}>
           <Ionicons name="receipt-outline" size={24} color="#1a56a4" />
           <Text style={styles.menuText}>My Orders</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         
         <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Wishlist')}>
           <Ionicons name="heart-outline" size={24} color="#1a56a4" />
@@ -239,8 +239,8 @@ const Sidebar = ({ closeSidebar }) => {
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Transactions')}>
-          <Ionicons name="card-outline" size={24} color="#1a56a4" />
-          <Text style={styles.menuText}>Transactions</Text>
+          <Ionicons name="receipt-outline" size={24} color="#1a56a4" />
+          <Text style={styles.menuText}>My Orders</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem} onPress={() => navigateTo('Notifications')}>
