@@ -138,7 +138,7 @@ const CartScreen = () => {
         <Ionicons
           name={selectedItems[item.order_id] ? "checkbox" : "square-outline"}
           size={24}
-          color="#ff9900"
+          color="#1a56a4" // Changed from #ff9900
         />
       </TouchableOpacity>
       
@@ -258,6 +258,7 @@ const styles = StyleSheet.create({
   },
   checkbox: {
     marginRight: 10,
+    color: '#1a56a4', // Changed color
   },
   productImage: {
     width: 80,
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
   },
   productPrice: {
     fontSize: 16,
-    color: '#ff9900',
+    color: '#1a56a4', // Changed from #ff9900
     fontWeight: 'bold',
   },
   quantityControl: {
@@ -354,10 +355,10 @@ const styles = StyleSheet.create({
   totalAmount: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#ff9900',
+    color: '#1a56a4', // Changed from #ff9900
   },
   orderButton: {
-    backgroundColor: '#ff9900',
+    backgroundColor: '#1a56a4', // Changed from #ff9900
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,

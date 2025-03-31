@@ -162,7 +162,7 @@ const Confirm = ({ navigation }) => {
           onPress={() => setSelectedPayment('cash_on_delivery')}
         >
           <Image 
-            source={require('../../../assets/logo.png')}
+            source={require('../../../assets/cod.png')}
             style={styles.paymentIcon}
           />
           <Text>Cash on Delivery</Text>
@@ -176,7 +176,7 @@ const Confirm = ({ navigation }) => {
           onPress={() => setSelectedPayment('credit_card')}
         >
           <Image 
-            source={require('../../../assets/logo.png')}
+            source={require('../../../assets/cc.png')}
             style={styles.paymentIcon}
           />
           <Text>Credit Card</Text>
@@ -190,7 +190,7 @@ const Confirm = ({ navigation }) => {
           onPress={() => setSelectedPayment('gcash')}
         >
           <Image 
-            source={require('../../../assets/logo.png')}
+            source={require('../../../assets/gcas.png')}
             style={styles.paymentIcon}
           />
           <Text>GCash</Text>
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
   },
   nextButton: {
-    backgroundColor: '#ff9900',
+    backgroundColor: '#1a56a4', // Changed from #ff9900 to blue
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   itemTotal: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ff9900',
+    color: '#1a56a4', // Changed from #ff9900
   },
   paymentSection: {
     padding: 15,
@@ -379,8 +379,8 @@ const styles = StyleSheet.create({
     width: windowWidth / 3.5,
   },
   selectedPayment: {
-    borderColor: '#ff9900',
-    backgroundColor: '#fff9f0',
+    borderColor: '#1a56a4', // Changed from #ff9900
+    backgroundColor: '#e6f0ff', // Lighter blue background
   },
   paymentIcon: {
     width: 30,
@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
   grandTotalAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ff9900',
+    color: '#1a56a4', // Changed from #ff9900
   }
 });
 
