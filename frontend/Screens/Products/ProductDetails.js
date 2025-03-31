@@ -20,6 +20,7 @@ const ProductDetails = ({ route, navigation }) => {
     const { product } = route.params;
     const [showCartModal, setShowCartModal] = useState(false);
     const [showOrderModal, setShowOrderModal] = useState(false);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     return (
         <View style={styles.container}>
@@ -39,14 +40,42 @@ const ProductDetails = ({ route, navigation }) => {
             <ScrollView style={styles.content}>
                 {/* Product Images */}
                 <View style={styles.imageContainer}>
-                    {product.images && product.images[0] ? (
-                        <Image 
-                            source={{ uri: product.images[0].url }} 
-                            style={styles.productImage}
-                            defaultSource={require('../../assets/logo.png')}
-                        />
-                    ) : (
-                        <View style={styles.imagePlaceholder} />
+                    <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={(event) => {
+                            const newIndex = Math.round(
+                                event.nativeEvent.contentOffset.x / width
+                            );
+                            setActiveImageIndex(newIndex);
+                        }}
+                    >
+                        {product.images && product.images.length > 0 ? (
+                            product.images.map((image, index) => (
+                                <Image
+                                    key={index}
+                                    source={{ uri: image.url }}
+                                    style={styles.productImage}
+                                    defaultSource={require('../../assets/logo.png')}
+                                />
+                            ))
+                        ) : (
+                            <View style={styles.imagePlaceholder} />
+                        )}
+                    </ScrollView>
+                    {product.images && product.images.length > 1 && (
+                        <View style={styles.pagination}>
+                            {product.images.map((_, index) => (
+                                <View
+                                    key={index}
+                                    style={[
+                                        styles.paginationDot,
+                                        activeImageIndex === index && styles.paginationDotActive
+                                    ]}
+                                />
+                            ))}
+                        </View>
                     )}
                 </View>
 
@@ -173,14 +202,30 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
     },
     productImage: {
-        width: '100%',
-        height: '100%',
+        width: width,
+        height: width * 0.8,
         resizeMode: 'contain',
     },
     imagePlaceholder: {
         width: '100%',
         height: '100%',
         backgroundColor: '#ccdeff',
+    },
+    pagination: {
+        flexDirection: 'row',
+        position: 'absolute',
+        bottom: 16,
+        alignSelf: 'center',
+        gap: 8,
+    },
+    paginationDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    paginationDotActive: {
+        backgroundColor: '#1a56a4',
     },
     productInfo: {
         padding: 16,
