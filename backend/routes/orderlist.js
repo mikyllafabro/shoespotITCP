@@ -29,7 +29,10 @@ router.post('/add-to-orderlist', protect, addToOrderList);
 router.get('/get-user-id', getUserId);
 router.get('/get-orderlist-count', protect, getOrderListCount);
 router.get('/user-orderlist', protect, async (req, res, next) => {
-    console.log('OrderList Route - Fetching user order list for:', req.user?._id);
+    if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+    }
+    console.log('OrderList Route - Fetching user order list for:', req.user._id);
     next();
 }, getUserOrderList);
 router.delete('/delete-order/:orderId', protect, async (req, res, next) => {

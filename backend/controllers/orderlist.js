@@ -108,35 +108,44 @@ exports.getOrderListCount = async (req, res) => {
 // Update getUserOrderList to use JWT authentication as well
 exports.getUserOrderList = async (req, res) => {
   try {
-    console.log('Fetching order list - User:', {
+    // Ensure user exists in request
+    if (!req.user || !req.user._id) {
+      console.error('No authenticated user found');
+      return res.status(401).json({ 
+        success: false,
+        message: 'Authentication required' 
+      });
+    }
+
+    console.log('Fetching order list for user:', {
       id: req.user._id,
       email: req.user.email
     });
 
-    // Get user from protect middleware - using JWT auth now
-    const user = req.user;
-
     // Fetch all order list items for this user
-    console.log('Querying OrderList with user_id:', user._id);
-    const orders = await OrderList.find({ user_id: user._id })
-      .populate('product_id');
+    const orders = await OrderList.find({ user_id: req.user._id })
+      .populate({
+        path: 'product_id',
+        select: '_id name description price images'
+      });
 
     console.log('Found orders:', orders.length);
-    console.log('Raw orders data:', JSON.stringify(orders, null, 2));
 
-    if (orders.length === 0) {
-      console.log('No orders found for user');
-      return res.status(200).json({ message: 'No items in the order list.', orders: [] });
+    if (!orders || orders.length === 0) {
+      return res.status(200).json({ 
+        success: true,
+        message: 'No items in the order list.',
+        orders: [] 
+      });
     }
 
     // Map the orders with product details
     const formattedOrders = orders.map((order) => {
-      console.log('Processing order:', {
-        orderId: order._id,
-        productId: order.product_id._id,
-        quantity: order.quantity
-      });
-      
+      if (!order.product_id) {
+        console.warn('Order without product:', order._id);
+        return null;
+      }
+
       return {
         order_id: order._id,
         product: {
@@ -149,14 +158,21 @@ exports.getUserOrderList = async (req, res) => {
         quantity: order.quantity,
         timestamp: order.timestamp,
       };
+    }).filter(Boolean); // Remove null entries
+
+    console.log('Formatted orders count:', formattedOrders.length);
+
+    res.status(200).json({
+      success: true,
+      orders: formattedOrders
     });
-
-    console.log('Formatted orders:', JSON.stringify(formattedOrders, null, 2));
-
-    res.status(200).json({ orders: formattedOrders });
   } catch (error) {
     console.error('Error in getUserOrderList:', error);
-    res.status(500).json({ message: 'Failed to fetch user order list.' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch user order list.',
+      error: error.message
+    });
   }
 };
 

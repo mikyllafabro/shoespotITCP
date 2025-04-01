@@ -20,6 +20,7 @@ import CartScreen from '../Screens/Cart/CartScreen';
 import Confirm from '../Screens/Cart/Checkout/Confirm';
 import AdminOrders from "../Screens/Admin/AdminOrders";
 import HomeTransactions from "../Screens/Transactions/HomeTransactions";
+import UserProfile from "../Screens/User/UserProfile";
 
 const Stack = createNativeStackNavigator();
 
@@ -115,6 +116,11 @@ const AppNavigator = () => {
             <Stack.Screen 
               name="Transactions" 
               component={HomeTransactions}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Profile" 
+              component={UserProfile}
               options={{ headerShown: false }}
             />
           </>
