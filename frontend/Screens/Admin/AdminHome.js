@@ -68,22 +68,6 @@ const AdminHome = ({ navigation }) => {
           </TouchableOpacity>
         </View>
         
-        {/* Recent Activity */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityText}>New order received - #ORD3945</Text>
-            <Text style={styles.activityTime}>2 min ago</Text>
-          </View>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityText}>Product stock low - Nike Air Max</Text>
-            <Text style={styles.activityTime}>15 min ago</Text>
-          </View>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityText}>New user registered - john@example.com</Text>
-            <Text style={styles.activityTime}>1 hour ago</Text>
-          </View>
-        </View>
       </ScrollView>
     </View>
   );
