@@ -90,17 +90,39 @@ const UserProfile = ({ navigation }) => {
       setLoading(true);
       const token = await SecureStore.getItemAsync('jwt');
       
-      // Create regular JSON payload instead of FormData
+      // Handle image upload if there's a new local image
+      if (userData.image && !userData.image.startsWith('https://')) {
+        const formData = new FormData();
+        formData.append('image', {  // Changed from 'avatar' to 'image'
+          uri: userData.image,
+          type: 'image/jpeg',
+          name: 'profile-image.jpg'
+        });
+
+        // Upload image first
+        const imageResponse = await axios.post(
+          `${baseUrl}/auth/upload-avatar`,
+          formData,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        if (imageResponse.data.success) {
+          userData.image = imageResponse.data.imageUrl;
+        }
+      }
+
+      // Update other profile information
       const updateData = {
         name: userData.name,
         mobileNumber: userData.phone,
-        address: userData.address
+        address: userData.address,
+        image: userData.image
       };
-
-      // If there's a new image, add it to the payload
-      if (userData.image && userData.image.startsWith('https://res.cloudinary.com/')) {
-        updateData.image = userData.image;
-      }
 
       const response = await axios.put(
         `${baseUrl}/auth/profile`,
