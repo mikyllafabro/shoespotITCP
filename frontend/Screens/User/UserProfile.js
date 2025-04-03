@@ -49,7 +49,7 @@ const UserProfile = ({ navigation }) => {
         email: profile.email || '',
         phone: profile.mobileNumber || '',
         address: profile.address || '',
-        image: profile.image || null
+        image: profile.userImage || null
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -98,16 +98,20 @@ const UserProfile = ({ navigation }) => {
       };
 
       // If there's a new image, add it to the payload
-      if (userData.image && userData.image.startsWith('file://')) {
+      if (userData.image && userData.image.startsWith('https://res.cloudinary.com/')) {
         updateData.image = userData.image;
       }
 
-      const response = await axios.put(`${baseUrl}/auth/profile`, updateData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await axios.put(
+        `${baseUrl}/auth/profile`,
+        updateData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
 
       if (response.data.success) {
         Alert.alert('Success', 'Profile updated successfully');

@@ -177,7 +177,6 @@ const UpdateProduct = ({ navigation, route }) => {
   };
 
   const handleUpdateProduct = async () => {
-    // Validate form fields
     if (!name || !price) {
       Alert.alert('Validation Error', 'Please fill all required fields');
       return;
@@ -185,19 +184,59 @@ const UpdateProduct = ({ navigation, route }) => {
 
     setIsSubmitting(true);
 
-    // Prepare product data
-    const productData = {
-      name,
-      price: parseFloat(price),
-      description,
-      category,
-      stock: parseInt(stock) || 0,
-      brand,
-      discount: parseFloat(discount) || 0,
-      images
-    };
-
     try {
+      let uploadedImages = [];
+
+      for (const image of images) {
+        if (!image.url || image.url.startsWith('file://')) { // Upload new or local images
+          const formData = new FormData();
+          formData.append('image', {
+            uri: image.uri || image.url, // Use uri or url for local images
+            type: 'image/jpeg',
+            name: image.fileName || `image-${Date.now()}.jpg`,
+          });
+
+          console.log("Uploading image to Cloudinary...");
+
+          const uploadResponse = await fetch(`${baseURL}/auth/upload-avatar`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'Accept': 'application/json',
+            },
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload product image');
+          }
+
+          const uploadResult = await uploadResponse.json();
+          uploadedImages.push({
+            url: uploadResult.secure_url,
+            cloudinary_id: uploadResult.public_id,
+          });
+
+          console.log("Image uploaded successfully:", uploadResult.secure_url);
+        } else {
+          uploadedImages.push(image); // Keep existing Cloudinary images
+          console.log("Existing Cloudinary image URL:", image.url);
+        }
+      }
+
+      const productData = {
+        name,
+        price: parseFloat(price),
+        description,
+        category,
+        stock: parseInt(stock) || 0,
+        brand,
+        discount: parseFloat(discount) || 0,
+        images: uploadedImages,
+      };
+
+      console.log(`Updating product with ID: ${productId}`);
+
       const result = await dispatch(updateProduct(productId, productData));
       if (result) {
         setShowSuccessModal(true);
