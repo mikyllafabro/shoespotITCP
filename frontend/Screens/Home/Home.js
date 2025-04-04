@@ -230,10 +230,10 @@ const Home = ({ navigation }) => {
                       </View>
                       <View style={styles.priceRow}>
                         <Text style={styles.originalPrice}>
-                          ${product.price?.toFixed(2)}
+                        ₱{product.price?.toFixed(2)}
                         </Text>
                         <Text style={styles.discountedPrice}>
-                          ${product.discountedPrice?.toFixed(2)}
+                        ₱{product.discountedPrice?.toFixed(2)}
                         </Text>
                       </View>
                     </>

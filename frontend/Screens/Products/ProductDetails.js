@@ -92,12 +92,12 @@ const ProductDetails = ({ route, navigation }) => {
                                     <Text style={styles.discountText}>-{product.discount}% OFF</Text>
                                 </View>
                                 <View style={styles.priceDetails}>
-                                    <Text style={styles.originalPrice}>${product.price.toFixed(2)}</Text>
+                                    <Text style={styles.originalPrice}>₱{product.price.toFixed(2)}</Text>
                                     <Text style={styles.discountedPrice}>
-                                        ${product.discountedPrice.toFixed(2)}
+                                    ₱{product.discountedPrice.toFixed(2)}
                                     </Text>
                                     <Text style={styles.savings}>
-                                        Save ${(product.price - product.discountedPrice).toFixed(2)}
+                                        Save ₱{(product.price - product.discountedPrice).toFixed(2)}
                                     </Text>
                                 </View>
                             </>
