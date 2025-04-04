@@ -7,7 +7,7 @@ const cookieParser = require('cookie-parser')
 const cors = require('cors')
 const products = require('./routes/product');
 const authRoute = require('./routes/authRoute');
-const orderListRoutes = require('./routes/orderlist');
+// const orderListRoutes = require('./routes/orderlist');
 // const orderRoutes = require('./routes/order');
 const orderRoutes = require('./routes/orderRoutes');
 const order = require('./routes/order');
@@ -66,7 +66,7 @@ app.post('/api/v1/send-notification', async (req, res) => {
 
 app.use('/api/v1', products);
 app.use('/api/v1/auth', authRoute);
-app.use('/api/v1', orderListRoutes);
+// app.use('/api/v1', orderListRoutes);
 // app.use('/api/v1', orderRoutes);
 
 app.use('/api/v1', orderRoutes);

@@ -8,6 +8,12 @@ if (Platform.OS === 'android') {
     baseURL = 'http://localhost:5000/api/v1';
 }
 
+// Add debugging for API calls
+export const logApiCall = (method, endpoint, data = null) => {
+    console.log(`API ${method}:`, `${baseURL}${endpoint}`);
+    if (data) console.log('Request data:', data);
+};
+
 export const axiosConfig = {
     baseURL,
     timeout: 30000,

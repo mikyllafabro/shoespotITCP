@@ -7,7 +7,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { getUserProfile } from '../../../Context/Actions/Auth.actions';
 import axios from 'axios';
 import baseUrl from '../../../assets/common/baseUrl';
-import { clearCartData } from '../../../Context/Actions/cartActions';
+import { clearCart, removeFromCart } from '../../../Context/Actions/cartActions'; // Change from clearCartData to clearCart
 import { placeOrder } from '../../../Context/Actions/orderActions';
 import * as SecureStore from 'expo-secure-store';
 
@@ -93,8 +93,8 @@ const Confirm = ({ navigation }) => {
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedPayment || !userData.mobileNumber || !userData.address) {
-      Alert.alert('Error', 'Please complete all required information');
+    if (!selectedPayment) {
+      Alert.alert('Error', 'Please select a payment method');
       return;
     }
 
@@ -102,21 +102,46 @@ const Confirm = ({ navigation }) => {
 
     try {
       const orderData = {
-        userId: userData._id, // Use MongoDB _id instead of firebaseUid
+        userId: userData._id,
         products: selectedOrders.map(item => ({
-          productId: item.product.id,
+          productId: item.productId,
           quantity: item.quantity
         })),
-        paymentMethod: selectedPayment,
-        email: userData.email,
-        address: userData.address,
-        total: calculateGrandTotal()
+        paymentMethod: selectedPayment
       };
 
-      console.log('Placing order with data:', orderData);
-      await dispatch(placeOrder(orderData, navigation));
+      const token = await SecureStore.getItemAsync('jwt');
+      const response = await axios.post(
+        `${baseUrl}/order/place-order`,
+        orderData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.order) {
+        // Only remove the ordered items from cart
+        const productIdsToRemove = selectedOrders.map(item => item.productId);
+        for (const productId of productIdsToRemove) {
+          await dispatch(removeFromCart(productId));
+        }
+
+        Alert.alert(
+          'Success',
+          'Order placed successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Cart')
+            }
+          ]
+        );
+      }
     } catch (error) {
-      console.error('Order placement error:', error);
+      console.error('Order placement error:', error.response?.data || error);
       Alert.alert('Error', 'Failed to place order. Please try again.');
     } finally {
       setIsProcessing(false);
@@ -126,8 +151,8 @@ const Confirm = ({ navigation }) => {
   const renderOrderItems = () => (
     <View style={styles.orderSection}>
       <Text style={styles.sectionTitle}>Order Summary</Text>
-      {selectedOrders.map((item) => (
-        <View key={item.order_id} style={styles.orderItem}>
+      {selectedOrders.map((item, index) => (
+        <View key={`order-${item.productId}-${index}`} style={styles.orderItem}>
           <Image 
             source={{ uri: item.product.image }}
             style={styles.productImage}
@@ -141,7 +166,7 @@ const Confirm = ({ navigation }) => {
             <View style={styles.priceRow}>
               <Text>Quantity: {item.quantity}</Text>
               <Text style={styles.itemTotal}>
-                ₱{calculateItemTotal(item).toFixed(2)}
+                ₱{(item.product.price * item.quantity).toFixed(2)}
               </Text>
             </View>
           </View>
@@ -221,6 +246,25 @@ const Confirm = ({ navigation }) => {
     </View>
   );
 
+  const renderSummary = () => (
+    <View style={styles.totalSection}>
+      <View key="summary-subtotal" style={styles.totalRow}>
+        <Text>Subtotal:</Text>
+        <Text>₱{calculateSubtotal().toFixed(2)}</Text>
+      </View>
+      <View key="summary-shipping" style={styles.totalRow}>
+        <Text>Shipping Fee:</Text>
+        <Text>₱{SHIPPING_FEE.toFixed(2)}</Text>
+      </View>
+      <View key="summary-total" style={[styles.totalRow, styles.grandTotal]}>
+        <Text style={styles.grandTotalText}>Total:</Text>
+        <Text style={styles.grandTotalAmount}>
+          ₱{calculateGrandTotal().toFixed(2)}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <ScrollView>
@@ -246,23 +290,7 @@ const Confirm = ({ navigation }) => {
 
         {renderOrderItems()}
         {renderPaymentMethods()}
-
-        <View style={styles.totalSection}>
-          <View style={styles.totalRow}>
-            <Text>Subtotal:</Text>
-            <Text>₱{calculateSubtotal().toFixed(2)}</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text>Shipping Fee:</Text>
-            <Text>₱{SHIPPING_FEE.toFixed(2)}</Text>
-          </View>
-          <View style={[styles.totalRow, styles.grandTotal]}>
-            <Text style={styles.grandTotalText}>Total:</Text>
-            <Text style={styles.grandTotalAmount}>
-              ₱{calculateGrandTotal().toFixed(2)}
-            </Text>
-          </View>
-        </View>
+        {renderSummary()}
       </ScrollView>
 
       {renderBottomNav()}

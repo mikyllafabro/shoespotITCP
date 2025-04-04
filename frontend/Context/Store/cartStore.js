@@ -5,6 +5,7 @@ import { productListReducer } from '../Reducers/productReducers';
 import { productReviewsReducer } from '../Reducers/productReviewsReducer';
 import { orderReducer } from '../Reducers/orderReducers';
 import { authReducer } from '../Reducers/authReducers';
+import { initDatabase } from '../../services/database';
 
 const initialState = {
   cart: {
@@ -56,6 +57,11 @@ const loggerMiddleware = store => next => action => {
   return result;
 };
 
+// Initialize database when store is created
+initDatabase().catch(error => {
+  console.error('Failed to initialize database:', error);
+});
+
 const store = createStore(
   rootReducer,
   initialState,
@@ -71,5 +77,8 @@ store.subscribe(() => {
 //     orderCount: state.cart?.orderCount
 //   });
 });
+
+// Initialize cart items when store is created
+store.dispatch(loadCartItems());
 
 export default store;

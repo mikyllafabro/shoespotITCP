@@ -1,6 +1,6 @@
 const Order = require('../models/Order');
 const User = require('../models/UserModel');
-const OrderList = require('../models/Orderlist');
+// const OrderList = require('../models/Orderlist');
 
 // Place a new order
 exports.placeOrder = async (req, res) => {
@@ -9,55 +9,52 @@ exports.placeOrder = async (req, res) => {
 
     console.log('Received order request:', {
       userId,
-      productsCount: products?.length,
+      products,
       paymentMethod
     });
 
     if (!userId || !products || !Array.isArray(products) || products.length === 0) {
-      console.error('Invalid order data:', { userId, products });
       return res.status(400).json({
         message: 'Invalid order data. Please provide userId and products array.'
       });
     }
 
-    // Find user directly by MongoDB _id
+    // Validate products array
+    const formattedProducts = products.map(item => {
+      if (!item.productId) {
+        throw new Error('Product ID is required for each item');
+      }
+      return {
+        productId: item.productId,
+        quantity: item.quantity || 1
+      };
+    });
+
+    // Find user
     const user = await User.findById(userId);
     if (!user) {
-      console.error('User not found with ID:', userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
     const order = new Order({
       userId: user._id,
-      products,
+      products: formattedProducts,
       paymentMethod,
-      status: 'shipping',
+      status: 'shipping'
     });
 
     await order.save();
-    console.log('Order saved:', order);
-
-    // Remove ordered items from cart
-    try {
-      const productIds = products.map(p => p.productId);
-      await OrderList.deleteMany({
-        user_id: userId,
-        product_id: { $in: productIds }
-      });
-    } catch (deleteError) {
-      console.error('Error removing items from cart:', deleteError);
-      // Don't throw error, just log it since order was successful
-    }
+    console.log('Order saved successfully:', order);
 
     res.status(201).json({
       message: 'Order placed successfully',
-      order,
+      order
     });
   } catch (error) {
-    console.error('Error placing order:', error);
+    console.error('Error placing order:', error.message);
     res.status(500).json({
       message: 'Failed to place order',
-      error: error.message,
+      error: error.message
     });
   }
 };

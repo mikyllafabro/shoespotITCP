@@ -1,287 +1,120 @@
-import axios from 'axios'
-// import { baseURL } from '@env'
-import baseURL, { axiosConfig } from '../../assets/common/baseUrl';
-import * as SecureStore from 'expo-secure-store'
 import {
-  ADD_TO_CART,
-  UPDATE_CART_QUANTITY,
-  REMOVE_FROM_CART,
   SET_CART_LOADING,
   SET_CART_ERROR,
+  SET_CART_ITEMS,
   SET_CART_COUNT,
-  SET_ORDER_COUNT,
-  GET_ORDER_LIST_REQUEST,
-  GET_ORDER_LIST_SUCCESS,
-  GET_ORDER_LIST_FAIL
+  CLEAR_CART
 } from '../Constants/CartConstants'
+import {
+  initDatabase,
+  saveCartItem,
+  getCartItems,
+  updateCartItemQuantity,
+  deleteCartItem,
+  clearCartItems,
+  getCartItemCount,
+  deleteMultipleCartItems
+} from '../../services/database'
 
-export const addToCart = (productId, quantity) => async (dispatch) => {
+export const addToCart = (product, quantity = 1) => async (dispatch) => {
   try {
     dispatch({ type: SET_CART_LOADING, payload: true });
     
-    const token = await SecureStore.getItemAsync('jwt');
-    console.log('Cart - Using token:', token ? 'Token exists' : 'No token');
+    // Ensure database is initialized before proceeding
+    await initDatabase();
     
-    if (!token) {
-      throw new Error('Authentication token not found. Please login again.');
-    }
-
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
+    // Transform the product data to match database structure
+    const cartItem = {
+      _id: product._id,
+      name: product.name,
+      price: product.price,
+      discountedPrice: product.discountedPrice || product.price,
+      images: product.images
     };
-
-    const response = await axios.post(
-      `${baseURL}/add-to-orderlist`,
-      {
-        product_id: productId,
-        quantity
-      },
-      config
-    );
-
-    dispatch({
-      type: ADD_TO_CART,
-      payload: response.data.order
-    });
     
-    dispatch(fetchCartCount());
-
+    await saveCartItem(cartItem, quantity);
+    const items = await getCartItems();
+    dispatch({ type: SET_CART_ITEMS, payload: items });
+    const count = await getCartItemCount();
+    dispatch({ type: SET_CART_COUNT, payload: count });
+    
     return { success: true };
   } catch (error) {
-    console.error('Cart - Error:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status
-    });
-    
-    const errorMsg = error.message || error.response?.data?.message || 'Failed to add to cart';
-    dispatch({
-      type: SET_CART_ERROR,
-      payload: errorMsg
-    });
-    return { success: false, error: errorMsg };
+    console.error('Error adding to cart:', error);
+    dispatch({ type: SET_CART_ERROR, payload: error.message });
+    return { success: false, error: error.message };
   } finally {
     dispatch({ type: SET_CART_LOADING, payload: false });
   }
 };
 
-export const updateCartQuantity = (orderId, quantity) => async (dispatch) => {
+export const updateQuantity = (productId, quantity) => async (dispatch) => {
   try {
     dispatch({ type: SET_CART_LOADING, payload: true });
-    
-    const token = await SecureStore.getItemAsync("jwt");
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
-    const response = await axios.put(
-      `${baseURL}/update-order/${orderId}`,
-      { quantity },
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-
-    // Dispatch success action with updated order
-    dispatch({
-      type: UPDATE_CART_QUANTITY,
-      payload: response.data.order
-    });
-
-    // Refresh the cart to get updated data
-    dispatch(getUserOrderList());
-
+    await updateCartItemQuantity(productId, quantity);
+    const items = await getCartItems();
+    dispatch({ type: SET_CART_ITEMS, payload: items });
+    const count = await getCartItemCount();
+    dispatch({ type: SET_CART_COUNT, payload: count });
   } catch (error) {
-    console.error('Error updating quantity:', error);
-    dispatch({
-      type: SET_CART_ERROR,
-      payload: error.response?.data?.message || 'Failed to update quantity'
-    });
-    Alert.alert('Error', 'Failed to update quantity');
+    dispatch({ type: SET_CART_ERROR, payload: error.message });
   } finally {
     dispatch({ type: SET_CART_LOADING, payload: false });
   }
 };
 
-export const fetchCartCount = () => async (dispatch) => {
-  try {
-    const token = await SecureStore.getItemAsync("jwt");
-    if (!token) {
-      dispatch({ type: SET_CART_COUNT, payload: 0 });
-      return;
-    }
-
-    console.log('Fetching cart count with token:', token.substring(0, 20) + '...');
-
-    const response = await axios.get(`${baseURL}/get-orderlist-count`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    console.log('Cart count response:', response.data);
-
-    dispatch({
-      type: SET_CART_COUNT,
-      payload: response.data.count || 0
-    });
-  } catch (error) {
-    console.error('Failed to fetch cart count:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    dispatch({ type: SET_CART_COUNT, payload: 0 });
-  }
-};
-
-export const initializeCartCount = () => async (dispatch) => {
-  try {
-    const token = await SecureStore.getItemAsync("jwt");
-    if (!token) {
-      dispatch({ type: SET_CART_COUNT, payload: 0 });
-      return;
-    }
-
-    const response = await axios.get(`${baseURL}/get-orderlist-count`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    dispatch({
-      type: SET_CART_COUNT,
-      payload: response.data.count || 0
-    });
-  } catch (error) {
-    console.error('Failed to initialize cart count:', {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data
-    });
-    dispatch({ type: SET_CART_COUNT, payload: 0 });
-  }
-};
-
-export const fetchOrderCount = () => async (dispatch) => {
-  try {
-    const token = await SecureStore.getItemAsync("jwt");
-    if (!token) {
-      dispatch({ type: SET_ORDER_COUNT, payload: 0 });
-      return;
-    }
-
-    const response = await axios.get(`${baseURL}/get-orderlist-count`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-      }
-    });
-
-    dispatch({
-      type: SET_ORDER_COUNT,
-      payload: response.data.count || 0
-    });
-  } catch (error) {
-    console.error('Failed to fetch order count:', error);
-    dispatch({ type: SET_ORDER_COUNT, payload: 0 });
-  }
-};
-
-export const getUserOrderList = () => async (dispatch) => {
-  try {
-    dispatch({ type: GET_ORDER_LIST_REQUEST });
-    
-    const token = await SecureStore.getItemAsync('jwt');
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-
-    console.log('Fetching cart with token:', token.substring(0, 20) + '...');
-    
-    const response = await axios.get(`${baseURL}/user-orderlist`, {
-      headers: { 
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    console.log('Cart API response:', response.data);
-
-    if (!response.data.orders) {
-      throw new Error('Invalid response format');
-    }
-
-    dispatch({
-      type: GET_ORDER_LIST_SUCCESS,
-      payload: response.data.orders
-    });
-
-  } catch (error) {
-    console.error('Cart fetch error:', error);
-    dispatch({
-      type: GET_ORDER_LIST_FAIL,
-      payload: error.message
-    });
-  }
-};
-
-export const clearCartData = () => (dispatch) => {
-  try {
-    dispatch({ type: 'CLEAR_CART_DATA' });
-    dispatch({ type: SET_CART_COUNT, payload: 0 });
-  } catch (error) {
-    console.error('Error clearing cart data:', error);
-  }
-};
-
-export const removeFromCart = (orderId) => async (dispatch) => {
+export const removeFromCart = (productId) => async (dispatch) => {
   try {
     dispatch({ type: SET_CART_LOADING, payload: true });
-    
-    const token = await SecureStore.getItemAsync("jwt");
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
-    console.log('Deleting order:', orderId);
-
-    const response = await axios.delete(
-      `${baseURL}/delete-order/${orderId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    console.log('Delete response:', response.data);
-
-    dispatch({
-      type: REMOVE_FROM_CART,
-      payload: orderId
-    });
-
-    // Refresh order list after deletion
-    dispatch(getUserOrderList());
-    dispatch(fetchCartCount());
-
+    await deleteCartItem(productId);
+    const items = await getCartItems();
+    dispatch({ type: SET_CART_ITEMS, payload: items });
+    const count = await getCartItemCount();
+    dispatch({ type: SET_CART_COUNT, payload: count });
   } catch (error) {
-    console.error('Delete error:', error.response?.data || error.message);
-    Alert.alert(
-      'Error',
-      'Failed to remove item from cart. Please try again.'
-    );
-    dispatch({
-      type: SET_CART_ERROR,
-      payload: error.response?.data?.message || 'Failed to remove item'
-    });
+    dispatch({ type: SET_CART_ERROR, payload: error.message });
+  } finally {
+    dispatch({ type: SET_CART_LOADING, payload: false });
+  }
+};
+
+export const removeMultipleFromCart = (productIds) => async (dispatch) => {
+  try {
+    dispatch({ type: SET_CART_LOADING, payload: true });
+    await deleteMultipleCartItems(productIds);
+    const items = await getCartItems();
+    dispatch({ type: SET_CART_ITEMS, payload: items });
+    const count = await getCartItemCount();
+    dispatch({ type: SET_CART_COUNT, payload: count });
+  } catch (error) {
+    dispatch({ type: SET_CART_ERROR, payload: error.message });
+  } finally {
+    dispatch({ type: SET_CART_LOADING, payload: false });
+  }
+};
+
+export const clearCart = () => async (dispatch) => {
+  try {
+    dispatch({ type: SET_CART_LOADING, payload: true });
+    await clearCartItems();
+    dispatch({ type: CLEAR_CART });
+  } catch (error) {
+    dispatch({ type: SET_CART_ERROR, payload: error.message });
+  } finally {
+    dispatch({ type: SET_CART_LOADING, payload: false });
+  }
+};
+
+export const loadCartItems = () => async (dispatch) => {
+  try {
+    dispatch({ type: SET_CART_LOADING, payload: true });
+    await initDatabase();
+    const items = await getCartItems();
+    dispatch({ type: SET_CART_ITEMS, payload: items });
+    const count = await getCartItemCount();
+    dispatch({ type: SET_CART_COUNT, payload: count });
+  } catch (error) {
+    dispatch({ type: SET_CART_ERROR, payload: error.message });
   } finally {
     dispatch({ type: SET_CART_LOADING, payload: false });
   }

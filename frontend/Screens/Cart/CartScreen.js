@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { getUserOrderList, removeFromCart, fetchOrderCount, updateCartQuantity } from '../../Context/Actions/cartActions';
+import { loadCartItems, removeFromCart, updateQuantity } from '../../Context/Actions/cartActions';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import baseUrl from '../../assets/common/baseUrl';
@@ -16,9 +16,9 @@ const CartScreen = () => {
   const [selectedItems, setSelectedItems] = useState({});
   const [loading, setLoading] = useState(false);
 
-  // Use direct state slice selection
-  const { orderList, loading: cartLoading, error } = useSelector(state => ({
-    orderList: state.cart?.orderList || [],
+  // Update to use cartItems instead of orderList
+  const { cartItems, loading: cartLoading, error } = useSelector(state => ({
+    cartItems: state.cart?.cartItems || [],
     loading: state.cart?.loading || false,
     error: state.cart?.error || null
   }));
@@ -26,19 +26,7 @@ const CartScreen = () => {
   useEffect(() => {
     const loadCart = async () => {
       try {
-        const token = await SecureStore.getItemAsync("jwt");
-        const userData = await SecureStore.getItemAsync("user");
-        
-        if (!token || !userData) {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-          });
-          return;
-        }
-
-        console.log('Loading cart with token:', token ? 'exists' : 'missing');
-        await dispatch(getUserOrderList());
+        await dispatch(loadCartItems());
       } catch (error) {
         console.error('Error loading cart:', error);
       }
@@ -50,14 +38,14 @@ const CartScreen = () => {
   // Debug log for cart state
   useEffect(() => {
     console.log('Current cart state:', {
-      orderList,
-      itemCount: orderList?.length,
+      cartItems,
+      itemCount: cartItems?.length,
       loading: cartLoading,
       error
     });
-  }, [orderList, cartLoading, error]);
+  }, [cartItems, cartLoading, error]);
 
-  const handleQuantityUpdate = async (orderId, newQuantity) => {
+  const handleQuantityUpdate = async (productId, newQuantity) => {
     if (newQuantity <= 0) {
       Alert.alert('Invalid Quantity', 'Quantity must be greater than 0');
       return;
@@ -65,7 +53,7 @@ const CartScreen = () => {
     
     try {
       setLoading(true);
-      await dispatch(updateCartQuantity(orderId, newQuantity));
+      await dispatch(updateQuantity(productId, newQuantity));
     } catch (error) {
       console.error('Error updating quantity:', error);
     } finally {
@@ -73,54 +61,58 @@ const CartScreen = () => {
     }
   };
 
-  const toggleItemSelection = (orderId) => {
+  const toggleItemSelection = (productId) => {
     setSelectedItems(prev => ({
       ...prev,
-      [orderId]: !prev[orderId]
+      [productId]: !prev[productId]
     }));
   };
 
   const calculateTotal = () => {
-    return orderList.reduce((total, item) => {
-      if (selectedItems[item.order_id]) {
-        const price = item.product.discountedPrice || item.product.price;
-        return total + (price * item.quantity);
+    return cartItems.reduce((total, item) => {
+      if (selectedItems[item.product_id]) {
+        return total + (item.product_price * item.quantity);
       }
       return total;
     }, 0);
   };
 
-  const handleDelete = (orderId) => {
-    dispatch(removeFromCart(orderId));
+  const handleDelete = (productId) => {
+    dispatch(removeFromCart(productId));
   };
 
   const handleOrderNow = () => {
     try {
-      const selectedOrderIds = Object.keys(selectedItems).filter(orderId => selectedItems[orderId]);
+      const selectedOrderIds = Object.keys(selectedItems).filter(productId => selectedItems[productId]);
       
       if (selectedOrderIds.length === 0) {
         Alert.alert('Error', 'Please select at least one item');
         return;
       }
 
-      // Get the selected orders with their details
-      const selectedOrders = orderList.filter(order => selectedItems[order.order_id]);
+      const selectedOrders = cartItems
+        .filter(item => selectedItems[item.product_id])
+        .map(item => ({
+          productId: item.product_id, // Simplified product ID
+          quantity: item.quantity,
+          // Include product details for display purposes
+          product: {
+            _id: item.product_id,
+            name: item.product_name,
+            price: item.product_price,
+            image: item.product_image
+          }
+        }));
       
-      // Dispatch selected orders to Redux
       dispatch({
         type: 'SET_SELECTED_ORDERS',
         payload: selectedOrders
       });
 
-      // Navigate to confirmation screen
       navigation.navigate('Confirm');
-
     } catch (error) {
       console.error('handleOrderNow - Error:', error);
-      Alert.alert(
-        'Error',
-        'Something went wrong while processing your order. Please try again.'
-      );
+      Alert.alert('Error', 'Something went wrong while processing your order.');
     }
   };
 
@@ -133,18 +125,18 @@ const CartScreen = () => {
     <View style={styles.orderItem}>
       <TouchableOpacity
         style={styles.checkbox}
-        onPress={() => toggleItemSelection(item.order_id)}
+        onPress={() => toggleItemSelection(item.product_id)}
       >
         <Ionicons
-          name={selectedItems[item.order_id] ? "checkbox" : "square-outline"}
+          name={selectedItems[item.product_id] ? "checkbox" : "square-outline"}
           size={24}
           color="#1a56a4" // Changed from #ff9900
         />
       </TouchableOpacity>
       
-      {item.product.image ? (
+      {item.product_image ? (
         <Image 
-          source={{ uri: item.product.image }} 
+          source={{ uri: item.product_image }} 
           style={styles.productImage}
           defaultSource={require('../../assets/logo.png')}
         />
@@ -154,16 +146,16 @@ const CartScreen = () => {
       
       <View style={styles.productInfo}>
         <View style={styles.productHeader}>
-          <Text style={styles.productName}>{item.product.name}</Text>
+          <Text style={styles.productName}>{item.product_name}</Text>
           <TouchableOpacity 
-            onPress={() => handleDelete(item.order_id)}
+            onPress={() => handleDelete(item.product_id)}
             style={styles.deleteButton}
           >
             <Ionicons name="trash-outline" size={24} color="#ff4444" />
           </TouchableOpacity>
         </View>
         
-        <Text style={styles.productPrice}>₱{item.product.price}</Text>
+        <Text style={styles.productPrice}>₱{item.product_price}</Text>
         
         <View style={styles.quantityControl}>
           <TouchableOpacity 
@@ -172,7 +164,7 @@ const CartScreen = () => {
               item.quantity <= 1 && styles.quantityButtonDisabled
             ]}
             disabled={item.quantity <= 1}
-            onPress={() => handleQuantityUpdate(item.order_id, item.quantity - 1)}
+            onPress={() => handleQuantityUpdate(item.product_id, item.quantity - 1)}
           >
             <Text style={styles.quantityButtonText}>-</Text>
           </TouchableOpacity>
@@ -181,7 +173,7 @@ const CartScreen = () => {
           
           <TouchableOpacity 
             style={styles.quantityButton}
-            onPress={() => handleQuantityUpdate(item.order_id, item.quantity + 1)}
+            onPress={() => handleQuantityUpdate(item.product_id, item.quantity + 1)}
           >
             <Text style={styles.quantityButtonText}>+</Text>
           </TouchableOpacity>
@@ -209,9 +201,9 @@ const CartScreen = () => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={orderList}
+        data={cartItems}
         renderItem={renderItem}
-        keyExtractor={item => item.order_id?.toString()}
+        keyExtractor={item => item.product_id?.toString()}
         ListEmptyComponent={
           <View style={styles.emptyCart}>
             <Text>No items in cart</Text>
