@@ -28,6 +28,16 @@ const Home = ({ navigation }) => {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const productList = useSelector(state => state.productList || {});
   const { loading, products, error } = productList;
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // Define categories with proper IDs
+  const categories = [
+    { id: 'running', name: 'Running', icon: '👟' },
+    { id: 'basketball', name: 'Basketball', icon: '🏀' },
+    { id: 'casual', name: 'Casual', icon: '👞' },
+    { id: 'training', name: 'Training', icon: '🎯' },
+    { id: 'lifestyle', name: 'Lifestyle', icon: '👠' },
+  ];
 
   // Initialize filteredProducts when products are loaded
   useEffect(() => {
@@ -96,8 +106,17 @@ const Home = ({ navigation }) => {
     if (!products) return;
 
     let result = [...products];
+    console.log('Search filters:', filters);
 
-    // Filter by keyword (name search)
+    // Apply category filter first if there's a selected category
+    if (selectedCategory) {
+      result = result.filter(product => 
+        product.category && product.category.toLowerCase() === selectedCategory.toLowerCase()
+      );
+      console.log(`Applied category filter: ${selectedCategory}`);
+    }
+
+    // Then apply other filters
     if (filters.keyword) {
       result = result.filter(product =>
         product.name.toLowerCase().includes(filters.keyword.toLowerCase()) ||
@@ -105,14 +124,12 @@ const Home = ({ navigation }) => {
       );
     }
 
-    // Filter by brand
     if (filters.brand) {
       result = result.filter(product =>
         product.brand.toLowerCase() === filters.brand.toLowerCase()
       );
     }
 
-    // Filter by price range
     if (filters.price) {
       result = result.filter(product => {
         const finalPrice = product.discountedPrice || product.price;
@@ -120,8 +137,31 @@ const Home = ({ navigation }) => {
       });
     }
 
-    // Update the filtered products
+    console.log('Final filtered products count:', result.length);
     setFilteredProducts(result);
+  };
+
+  const handleCategoryPress = (categoryId) => {
+    console.log('Category pressed:', categoryId);
+    // First update the selected category
+    const newCategory = selectedCategory === categoryId ? null : categoryId;
+    setSelectedCategory(newCategory);
+    
+    // Then apply filters with the updated category
+    if (products) {
+      let result = [...products];
+      
+      // Apply category filter if selected
+      if (newCategory) {
+        result = result.filter(product => 
+          product.category && product.category.toLowerCase() === newCategory.toLowerCase()
+        );
+        console.log(`Filtering products for category: ${newCategory}`);
+        console.log('Filtered products count:', result.length);
+      }
+      
+      setFilteredProducts(result);
+    }
   };
 
   // Open drawer with animation
@@ -156,6 +196,16 @@ const Home = ({ navigation }) => {
     }
   };
   
+  const scrollViewRef = useRef(null);
+  const [featuredProductsY, setFeaturedProductsY] = useState(0);
+
+  const scrollToFeaturedProducts = () => {
+    scrollViewRef.current?.scrollTo({
+      y: featuredProductsY,
+      animated: true
+    });
+  };
+
   // Update backdrop and sidebar conditional rendering
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
@@ -195,7 +245,11 @@ const Home = ({ navigation }) => {
       <WelcomeBanner />
       
       {/* Main content */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Search Filters */}
         <SearchFilters onSearch={handleSearch} />
         
@@ -203,7 +257,7 @@ const Home = ({ navigation }) => {
         <View style={styles.heroBanner}>
           <Text style={styles.heroText}>Step Into Style</Text>
           <Text style={styles.heroSubtext}>Discover the season's hottest footwear</Text>
-          <TouchableOpacity style={styles.shopButton}>
+          <TouchableOpacity style={styles.shopButton} onPress={scrollToFeaturedProducts}>
             <Text style={styles.shopButtonText}>SHOP NOW</Text>
           </TouchableOpacity>
         </View>
@@ -211,18 +265,41 @@ const Home = ({ navigation }) => {
         {/* Categories */}
         <Text style={styles.sectionTitle}>Categories</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-          {['Running', 'Basketball', 'Casual', 'Training', 'Lifestyle'].map((category) => (
-            <TouchableOpacity key={category} style={styles.categoryCard}>
-              <View style={styles.categoryCircle}>
-                <Text style={styles.categoryIcon}>👞</Text>
+          {categories.map((category) => (
+            <TouchableOpacity 
+              key={category.id} 
+              style={[
+                styles.categoryCard,
+                selectedCategory === category.id && styles.selectedCategoryCard
+              ]}
+              onPress={() => handleCategoryPress(category.id)}
+            >
+              <View style={[
+                styles.categoryCircle,
+                selectedCategory === category.id && styles.selectedCategoryCircle
+              ]}>
+                <Text style={styles.categoryIcon}>{category.icon}</Text>
               </View>
-              <Text style={styles.categoryText}>{category}</Text>
+              <Text style={[
+                styles.categoryText,
+                selectedCategory === category.id && styles.selectedCategoryText
+              ]}>
+                {category.name}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
         {/* Featured Products */}
-        <Text style={styles.sectionTitle}>Featured Products</Text>
+        <Text 
+          style={styles.sectionTitle}
+          onLayout={(event) => {
+            const layout = event.nativeEvent.layout;
+            setFeaturedProductsY(layout.y);
+          }}
+        >
+          Featured Products
+        </Text>
         <View style={styles.productsGrid}>
           {loading ? (
             <View style={styles.centered}>
@@ -393,6 +470,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0a2d5a',
   },
+  selectedCategoryCard: {
+    transform: [{scale: 1.05}],
+  },
+  selectedCategoryCircle: {
+    backgroundColor: '#1a56a4',
+  },
+  selectedCategoryText: {
+    color: '#1a56a4',
+    fontWeight: 'bold',
+  },
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -477,57 +564,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  priceContainer: {
-    marginVertical: 4,
-  },
-  discountBadge: {
-    backgroundColor: '#e74c3c',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  discountText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  originalPrice: {
-    fontSize: 14,
-    color: '#666',
-    textDecorationLine: 'line-through',
-  },
-  discountedPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#e74c3c',
-  },
-  regularPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1a56a4',
-  },
-  stockContainer: {
-    marginTop: 4,
-  },
-  stockText: {
-    fontSize: 12,
-    color: '#2ecc71',
-  },
-  lowStockText: {
-    color: '#f39c12',
-  },
-  outOfStockText: {
-    fontSize: 12,
-    color: '#e74c3c',
-  },
-
   priceContainer: {
     marginVertical: 4,
   },
