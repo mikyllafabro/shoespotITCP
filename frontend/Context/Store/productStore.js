@@ -4,7 +4,8 @@ import {
   productCreateReducer,
   productUpdateReducer,
   productDeleteReducer,
-  productReviewsReducer
+  productReviewsReducer,
+  productReviewReducer
 } from '../Reducers/productReducers';
 
 // Custom middleware for logging
@@ -15,14 +16,25 @@ const logger = store => next => action => {
   return result;
 };
 
+const initialState = {
+  productList: { products: [] },
+  productCreate: {},
+  productUpdate: { product: {} },
+  productDelete: {},
+  productReviews: { reviews: [], loading: false, error: null },
+  productReview: { canReview: false, checkingPurchase: false, loading: false, error: null }
+};
+
 const store = configureStore({
   reducer: {
     productList: productListReducer,
     productCreate: productCreateReducer,
     productUpdate: productUpdateReducer,
     productDelete: productDeleteReducer,
-    productReviews: productReviewsReducer
+    productReviews: productReviewsReducer,
+    productReview: productReviewReducer
   },
+  preloadedState: initialState,
   middleware: (getDefaultMiddleware) => 
     getDefaultMiddleware({
       serializableCheck: false

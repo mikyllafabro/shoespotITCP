@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { 
     View, 
     Text, 
@@ -7,20 +8,47 @@ import {
     Image, 
     TouchableOpacity,
     StatusBar,
-    Dimensions
+    Dimensions,
+    Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { checkCanReviewProduct, fetchProductReviews } from '../../Context/Actions/productActions';
 import CartModal from '../Modals/CartModal';
 import OrderModal from '../Modals/OrderModal';
+import ReviewModal from '../Modals/ReviewModal';  // Add this import
 
 const { width } = Dimensions.get('window');
 
 const ProductDetails = ({ route, navigation }) => {
+    const dispatch = useDispatch();
     const { product } = route.params;
     const [showCartModal, setShowCartModal] = useState(false);
     const [showOrderModal, setShowOrderModal] = useState(false);
+    const [showReviewModal, setShowReviewModal] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    // Update selectors to handle undefined state
+    const productReviews = useSelector(state => state.productReviews || { reviews: [], loading: false });
+    const { reviews = [], loading: reviewsLoading = false } = productReviews;
+    const { canReview = false } = useSelector(state => state.productReview || {});
+
+    useEffect(() => {
+        if (product?._id) {
+            try {
+                console.log('Fetching reviews for product:', product._id);
+                dispatch(fetchProductReviews(product._id));
+                dispatch(checkCanReviewProduct(product._id));
+            } catch (error) {
+                console.error('Error loading product data:', error);
+            }
+        }
+    }, [dispatch, product?._id, showReviewModal]);
+
+    console.log('Reviews from state:', reviews); // Debug log
+
+    const handleReviewPress = () => {
+        setShowReviewModal(true);
+    };
 
     return (
         <View style={styles.container}>
@@ -133,6 +161,45 @@ const ProductDetails = ({ route, navigation }) => {
                         <Text style={styles.sectionTitle}>Category</Text>
                         <Text style={styles.category}>{product.category}</Text>
                     </View>
+
+                    {/* Reviews Section */}
+                    <View style={styles.reviewsContainer}>
+                        <View style={styles.reviewsHeader}>
+                            <Text style={styles.sectionTitle}>Reviews</Text>
+                            <Text style={styles.ratingText}>
+                                Average Rating: {product?.ratings ? `${product.ratings.toFixed(1)} ★` : 'No ratings'}
+                            </Text>
+                        </View>
+
+                        {/* Review Button */}
+                        <TouchableOpacity 
+                            style={styles.reviewButton}
+                            onPress={handleReviewPress}
+                        >
+                            <Text style={styles.reviewButtonText}>Write a Review</Text>
+                        </TouchableOpacity>
+
+                        {/* Reviews List */}
+                        {reviewsLoading ? (
+                            <Text style={styles.noReviews}>Loading reviews...</Text>
+                        ) : reviews && reviews.length > 0 ? (
+                            <View style={styles.reviewsList}>
+                                {reviews.map((review) => (
+                                    <View key={review._id || Math.random()} style={styles.reviewItem}>
+                                        <View style={styles.reviewHeader}>
+                                            <Text style={styles.reviewerName}>{review.name}</Text>
+                                            <Text style={styles.reviewRating}>
+                                                {'★'.repeat(review.rating)}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.reviewComment}>{review.comment}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        ) : (
+                            <Text style={styles.noReviews}>No reviews yet</Text>
+                        )}
+                    </View>
                 </View>
 
                 {/* Buttons Container */}
@@ -167,6 +234,13 @@ const ProductDetails = ({ route, navigation }) => {
                     onClose={() => setShowOrderModal(false)}
                     product={product}
                     navigation={navigation}
+                />
+
+                {/* Add Review Modal */}
+                <ReviewModal
+                    visible={showReviewModal}
+                    onClose={() => setShowReviewModal(false)}
+                    productId={product._id}
                 />
             </ScrollView>
         </View>
@@ -350,6 +424,75 @@ const styles = StyleSheet.create({
         color: 'white',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    reviewButton: {
+        backgroundColor: '#4CAF50',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginVertical: 16,
+    },
+    reviewButtonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    reviewsContainer: {
+        padding: 16,
+        backgroundColor: 'white',
+        borderRadius: 8,
+        marginHorizontal: 16,
+        marginBottom: 16,
+    },
+    reviewsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    ratingText: {
+        fontSize: 16,
+        color: '#666',
+    },
+    reviewsList: {
+        maxHeight: 300, // Limit the height of reviews list
+    },
+    reviewItem: {
+        marginBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        paddingBottom: 8,
+    },
+    reviewHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    reviewerName: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#333',
+    },
+    reviewRating: {
+        fontSize: 16,
+        color: '#f39c12',
+        fontWeight: 'bold',
+    },
+    reviewDate: {
+        fontSize: 12,
+        color: '#999',
+        marginBottom: 4,
+    },
+    reviewComment: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
+    },
+    noReviews: {
+        textAlign: 'center',
+        color: '#666',
+        fontStyle: 'italic',
+        marginVertical: 16,
     },
 });
 

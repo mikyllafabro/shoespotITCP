@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   PRODUCT_LIST_REQUEST, 
   PRODUCT_LIST_SUCCESS, 
@@ -18,7 +19,13 @@ import {
   PRODUCT_DELETE_FAIL,
   PRODUCT_DETAILS_REQUEST,
   PRODUCT_DETAILS_SUCCESS,
-  PRODUCT_DETAILS_FAIL
+  PRODUCT_DETAILS_FAIL,
+  CHECK_PURCHASE_REQUEST,
+  CHECK_PURCHASE_SUCCESS,
+  CHECK_PURCHASE_FAIL,
+  PRODUCT_REVIEW_REQUEST,
+  PRODUCT_REVIEW_SUCCESS,
+  PRODUCT_REVIEW_FAIL
 } from '../Constants/ProductConstants';
 import baseURL, { axiosConfig } from '../../assets/common/baseUrl';
 
@@ -289,8 +296,11 @@ export const deleteProduct = (productId) => async (dispatch) => {
 export const fetchProductReviews = (productId) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_REVIEWS_REQUEST });
-
+    
+    console.log('Fetching reviews for product:', productId);
+    
     const { data } = await axios.get(`${baseURL}/product/${productId}/reviews`);
+    console.log('Reviews API response:', data);
 
     if (data.success) {
       dispatch({
@@ -298,12 +308,13 @@ export const fetchProductReviews = (productId) => async (dispatch) => {
         payload: data.reviews
       });
     } else {
-      throw new Error('Failed to fetch reviews');
+      throw new Error(data.message || 'Failed to fetch reviews');
     }
   } catch (error) {
+    console.error('Error fetching reviews:', error);
     dispatch({
       type: PRODUCT_REVIEWS_FAIL,
-      payload: error.response?.data?.message || error.message
+      payload: error.message
     });
   }
 };
@@ -343,6 +354,76 @@ export const fetchProductDetails = (productId) => async (dispatch) => {
       payload: error.response?.data?.message || 'Failed to fetch product details'
     });
     throw error;
+  }
+};
+
+export const checkCanReviewProduct = (productId) => async (dispatch) => {
+  try {
+    dispatch({ type: CHECK_PURCHASE_REQUEST });
+
+    // For testing purposes, simulate a successful check
+    dispatch({
+      type: CHECK_PURCHASE_SUCCESS,
+      payload: true // This will make the review button always appear
+    });
+
+    // Once you have authentication working, uncomment this:
+    /*
+    const token = await AsyncStorage.getItem('userToken');
+    const { data } = await axios.get(
+      `${baseURL}/product/${productId}/can-review`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        }
+      }
+    );
+    dispatch({
+      type: CHECK_PURCHASE_SUCCESS,
+      payload: data.canReview
+    });
+    */
+  } catch (error) {
+    console.error('Check review eligibility error:', error);
+    // Don't dispatch error, just set canReview to true for testing
+    dispatch({
+      type: CHECK_PURCHASE_SUCCESS,
+      payload: true
+    });
+  }
+};
+
+export const createProductReview = (productId, review) => async (dispatch) => {
+  try {
+    dispatch({ type: PRODUCT_REVIEW_REQUEST });
+    
+    const { data } = await axios.post(
+      `${baseURL}/product/${productId}/review`,
+      review,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    dispatch({
+      type: PRODUCT_REVIEW_SUCCESS,
+      payload: data.review
+    });
+
+    // Immediately fetch updated reviews
+    await dispatch(fetchProductReviews(productId));
+
+  } catch (error) {
+    console.error('Review creation error:', error);
+    dispatch({
+      type: PRODUCT_REVIEW_FAIL,
+      payload: error.response?.data?.message || 'Failed to create review'
+    });
   }
 };
 

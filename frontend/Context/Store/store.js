@@ -1,17 +1,16 @@
-import { legacy_createStore as createStore, combineReducers, applyMiddleware } from 'redux';
-import { thunk } from 'redux-thunk';
+import { configureStore } from '@reduxjs/toolkit';
+import { 
+  productListReducer, 
+  productCreateReducer,
+  productUpdateReducer,
+  productDeleteReducer,
+  productReviewsReducer,
+  productReviewReducer
+} from '../Reducers/productReducers';
 import authReducer from '../Reducers/Auth.reducer';
-import { productListReducer } from '../Reducers/productReducers';
 import { cartReducer } from '../Reducers/cartReducers';
-import { composeWithDevTools } from 'redux-devtools-extension';
 
-const rootReducer = combineReducers({
-  auth: authReducer,
-  productList: productListReducer,
-  cart: cartReducer,  // Add cart reducer
-});
-
-const initialState = {
+const preloadedState = {
   auth: {
     user: null,
     token: null,
@@ -26,7 +25,10 @@ const initialState = {
     orderCount: 0,
     orderList: [],
     selectedOrders: []
-  }
+  },
+  productList: { products: [] },
+  productReviews: { reviews: [], loading: false, error: null },
+  productReview: { canReview: false, loading: false, error: null }
 };
 
 // Debug middleware
@@ -42,10 +44,22 @@ const logger = store => next => action => {
   return result;
 };
 
-const store = createStore(
-  rootReducer,
-  initialState,
-  composeWithDevTools(applyMiddleware(thunk, logger))
-);
+const store = configureStore({
+  reducer: {
+    auth: authReducer,
+    cart: cartReducer,
+    productList: productListReducer,
+    productReviews: productReviewsReducer,
+    productReview: productReviewReducer,
+    productCreate: productCreateReducer,
+    productUpdate: productUpdateReducer,
+    productDelete: productDeleteReducer
+  },
+  preloadedState,
+  middleware: (getDefaultMiddleware) => 
+    getDefaultMiddleware({
+      serializableCheck: false
+    }).concat(logger)
+});
 
 export default store;

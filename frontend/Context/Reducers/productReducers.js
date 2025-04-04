@@ -16,7 +16,14 @@ import {
   PRODUCT_DELETE_REQUEST,
   PRODUCT_DELETE_SUCCESS,
   PRODUCT_DELETE_FAIL,
-  PRODUCT_DELETE_RESET
+  PRODUCT_DELETE_RESET,
+  PRODUCT_REVIEW_REQUEST,
+  PRODUCT_REVIEW_SUCCESS,
+  PRODUCT_REVIEW_FAIL,
+  PRODUCT_REVIEW_RESET,
+  CHECK_PURCHASE_REQUEST,
+  CHECK_PURCHASE_SUCCESS,
+  CHECK_PURCHASE_FAIL
 } from '../Constants/ProductConstants';
 
 // Reducer for product list
@@ -86,15 +93,47 @@ export const productDeleteReducer = (state = {}, action) => {
   }
 };
 
-// Reducer for product reviews
+// Update the reviews reducer with proper initial state
 export const productReviewsReducer = (state = { reviews: [] }, action) => {
   switch (action.type) {
     case PRODUCT_REVIEWS_REQUEST:
-      return { loading: true, reviews: [] };
+      return { ...state, loading: true };
     case PRODUCT_REVIEWS_SUCCESS:
-      return { loading: false, reviews: action.payload };
+      console.log('Reviews reducer received:', action.payload);
+      return { 
+        loading: false, 
+        reviews: action.payload, 
+        error: null 
+      };
     case PRODUCT_REVIEWS_FAIL:
-      return { loading: false, error: action.payload };
+      return { ...state, loading: false, error: action.payload };
+    default:
+      return state;
+  }
+};
+
+// Update the product review reducer with proper initial state
+export const productReviewReducer = (state = { canReview: false, checkingPurchase: false }, action) => {
+  switch (action.type) {
+    case PRODUCT_REVIEW_REQUEST:
+      return { ...state, loading: true };
+    case PRODUCT_REVIEW_SUCCESS:
+      return { ...state, loading: false, success: true };
+    case PRODUCT_REVIEW_FAIL:
+      return { ...state, loading: false, error: action.payload };
+    case PRODUCT_REVIEW_RESET:
+      return { canReview: false, checkingPurchase: false };
+    case CHECK_PURCHASE_REQUEST:
+      return { ...state, checkingPurchase: true };
+    case CHECK_PURCHASE_SUCCESS:
+      return { ...state, checkingPurchase: false, canReview: action.payload };
+    case CHECK_PURCHASE_FAIL:
+      return { 
+        ...state, 
+        checkingPurchase: false, 
+        canReview: false, 
+        error: action.payload 
+      };
     default:
       return state;
   }
