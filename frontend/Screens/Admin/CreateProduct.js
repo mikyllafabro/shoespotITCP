@@ -81,43 +81,89 @@ const CreateProduct = ({ navigation }) => {
 
   const handleSubmit = async () => {
     if (!name || !price || !description || !category || !stock || !brand) {
-        Alert.alert('Validation Error', 'Please fill all required fields');
-        return;
+      Alert.alert('Validation Error', 'Please fill all required fields');
+      return;
     }
 
     setIsLoading(true);
 
     try {
-        const formattedData = {
-            name,
-            price: parseFloat(price),
-            description,
-            category,
-            stock: parseInt(stock),
-            brand,
-            status: 'Available',
-            discount: parseFloat(discount) || 0, // Ensure discount is passed
-            images: images.map(img => ({
-                uri: img.uri,
-                type: 'image/jpeg',
-                name: img.name || `image-${Date.now()}.jpg`
-            }))
-        };
+      let uploadedImages = [];
 
-        const result = await dispatch(createProduct(formattedData));
-        if (result) {
-            setShowSuccessModal(true);
-            setIsLoading(false);
+      if (images.length > 0) {
+        for (const image of images) {
+          const formData = new FormData();
+          formData.append('image', {
+            uri: image.uri,
+            type: 'image/jpeg', // Adjust based on your image type
+            name: image.name || `image-${Date.now()}.jpg`,
+          });
+
+          console.log("Uploading image to Cloudinary...");
+
+          const uploadResponse = await fetch(`${baseURL}/auth/upload-avatar`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'Accept': 'application/json',
+            },
+            body: formData,
+          });
+
+          if (!uploadResponse.ok) {
+            throw new Error('Failed to upload product image');
+          }
+
+          const uploadResult = await uploadResponse.json();
+          uploadedImages.push({
+            url: uploadResult.secure_url,
+            cloudinary_id: uploadResult.public_id,
+          });
+
+          console.log("Image uploaded successfully:", uploadResult.secure_url);
         }
+      }
+
+      const formattedData = {
+        name,
+        price: parseFloat(price),
+        description,
+        category,
+        stock: parseInt(stock),
+        brand,
+        status: 'Available',
+        discount: parseFloat(discount) || 0,
+        images: uploadedImages,
+      };
+
+      console.log(`Sending request to: ${baseURL}/admin/product/create`);
+
+      const response = await fetch(`${baseURL}/admin/product/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(formattedData),
+      });
+
+      const responseText = await response.text(); // Read raw response text
+      console.log('Raw server response:', responseText);
+
+      if (!response.ok) {
+        throw new Error(`Server Error: ${response.status} - ${responseText}`);
+      }
+
+      const responseData = JSON.parse(responseText); // Parse JSON if valid
+      console.log('Product created successfully:', responseData);
+      setShowSuccessModal(true);
     } catch (error) {
-        console.error('Error creating product:', error);
-        Alert.alert(
-            'Error',
-            error.response?.data?.message || 'Failed to create product'
-        );
-        setIsLoading(false);
+      console.error('Error creating product:', error);
+      Alert.alert('Error', error.message);
+    } finally {
+      setIsLoading(false);
     }
-};
+  };
 
   const handleSuccessModalClose = (shouldNavigate = false) => {
     setShowSuccessModal(false);
@@ -751,4 +797,3 @@ const styles = StyleSheet.create({
   },
 });
 export default CreateProduct;
-

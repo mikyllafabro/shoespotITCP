@@ -49,7 +49,7 @@ const UserProfile = ({ navigation }) => {
         email: profile.email || '',
         phone: profile.mobileNumber || '',
         address: profile.address || '',
-        image: profile.userImage || null
+        image: profile.userImage || null,
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
