@@ -25,11 +25,17 @@ const SIDEBAR_WIDTH = width * 0.7;
 
 const Home = ({ navigation }) => {
   const dispatch = useDispatch();
-  
-  // Redux state for products
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const productList = useSelector(state => state.productList || {});
   const { loading, products, error } = productList;
-  
+
+  // Initialize filteredProducts when products are loaded
+  useEffect(() => {
+    if (products) {
+      setFilteredProducts(products);
+    }
+  }, [products]);
+
   // Sidebar animation
   const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const [isOpen, setIsOpen] = useState(false);
@@ -86,8 +92,36 @@ const Home = ({ navigation }) => {
     dispatch(listProducts());
   }, [dispatch]);
 
-  const handleSearch = (searchParams) => {
-    dispatch(listProducts(searchParams));
+  const handleSearch = (filters) => {
+    if (!products) return;
+
+    let result = [...products];
+
+    // Filter by keyword (name search)
+    if (filters.keyword) {
+      result = result.filter(product =>
+        product.name.toLowerCase().includes(filters.keyword.toLowerCase()) ||
+        product.brand.toLowerCase().includes(filters.keyword.toLowerCase())
+      );
+    }
+
+    // Filter by brand
+    if (filters.brand) {
+      result = result.filter(product =>
+        product.brand.toLowerCase() === filters.brand.toLowerCase()
+      );
+    }
+
+    // Filter by price range
+    if (filters.price) {
+      result = result.filter(product => {
+        const finalPrice = product.discountedPrice || product.price;
+        return finalPrice >= filters.price.min && finalPrice <= filters.price.max;
+      });
+    }
+
+    // Update the filtered products
+    setFilteredProducts(result);
   };
 
   // Open drawer with animation
@@ -177,7 +211,7 @@ const Home = ({ navigation }) => {
         {/* Categories */}
         <Text style={styles.sectionTitle}>Categories</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-          {['Running', 'Casual', 'Formal', 'Sports', 'Kids'].map((category) => (
+          {['Running', 'Basketball', 'Casual', 'Training', 'Lifestyle'].map((category) => (
             <TouchableOpacity key={category} style={styles.categoryCard}>
               <View style={styles.categoryCircle}>
                 <Text style={styles.categoryIcon}>👞</Text>
@@ -196,8 +230,8 @@ const Home = ({ navigation }) => {
             </View>
           ) : error ? (
             <Text style={styles.errorText}>{error}</Text>
-          ) : products && products.length > 0 ? (
-            products.map((product) => (
+          ) : filteredProducts && filteredProducts.length > 0 ? (
+            filteredProducts.map((product) => (
               <TouchableOpacity 
                 key={product._id} 
                 style={styles.productCard}
@@ -269,7 +303,7 @@ const Home = ({ navigation }) => {
               </TouchableOpacity>
             ))
           ) : (
-            <Text style={styles.noProductsText}>No products found.</Text>
+            <Text style={styles.noProductsText}>No products found matching your filters.</Text>
           )}
         </View>
       </ScrollView>

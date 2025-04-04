@@ -61,9 +61,12 @@ export const listProducts = (searchParams = {}) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_LIST_REQUEST });
     
-    console.log('Fetching products from:', `${baseURL}/products`);
+    const queryString = new URLSearchParams(searchParams).toString();
+    const url = `${baseURL}/products?${queryString}`;
 
-    const response = await axios.get(`${baseURL}/products`, {
+    console.log('Fetching products from:', url);
+
+    const response = await axios.get(url, {
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
@@ -85,7 +88,7 @@ export const listProducts = (searchParams = {}) => async (dispatch) => {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
-      url: `${baseURL}/products`
+      url
     });
 
     dispatch({

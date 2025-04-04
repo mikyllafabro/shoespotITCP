@@ -16,25 +16,25 @@ const SearchFilters = ({ onSearch }) => {
   };
 
   const handleSearch = () => {
-    // Only include non-empty values in filters
     const filters = {};
 
+    // Always include price range in filters
+    filters.price = {
+      min: priceRange.min,
+      max: priceRange.max
+    };
+
+    // Include search query if present
     if (searchQuery.trim()) {
       filters.keyword = searchQuery.trim();
     }
 
+    // Include brand if selected
     if (selectedCategory) {
-      filters.brand = selectedCategory; // Changed from category to brand
+      filters.brand = selectedCategory;
     }
 
-    if (priceRange.min > 0 || priceRange.max < 1000) {
-      filters.price = {
-        min: priceRange.min,
-        max: priceRange.max
-      };
-    }
-
-    console.log('Applying filters:', filters); // Debug log
+    console.log('Applying filters:', filters);
     onSearch(filters);
   };
 
@@ -76,7 +76,7 @@ const SearchFilters = ({ onSearch }) => {
 
       <View style={styles.priceRangeContainer}>
         <Text style={styles.priceRangeLabel}>
-          Price Range: ${priceRange.min.toFixed(0)} - ${priceRange.max.toFixed(0)}
+          Price Range: ₱{priceRange.min.toFixed(0)} - ₱{priceRange.max.toFixed(0)}
         </Text>
         <View style={styles.priceControls}>
           <View style={styles.priceControl}>
@@ -85,7 +85,7 @@ const SearchFilters = ({ onSearch }) => {
               <TouchableOpacity style={styles.adjustButton} onPress={() => adjustPrice('min', -100)}>
                 <Text>-</Text>
               </TouchableOpacity>
-              <Text style={styles.priceValue}>${priceRange.min}</Text>
+              <Text style={styles.priceValue}>₱{priceRange.min}</Text>
               <TouchableOpacity style={styles.adjustButton} onPress={() => adjustPrice('min', 100)}>
                 <Text>+</Text>
               </TouchableOpacity>
@@ -97,7 +97,7 @@ const SearchFilters = ({ onSearch }) => {
               <TouchableOpacity style={styles.adjustButton} onPress={() => adjustPrice('max', -100)}>
                 <Text>-</Text>
               </TouchableOpacity>
-              <Text style={styles.priceValue}>${priceRange.max}</Text>
+              <Text style={styles.priceValue}>₱{priceRange.max}</Text>
               <TouchableOpacity style={styles.adjustButton} onPress={() => adjustPrice('max', 100)}>
                 <Text>+</Text>
               </TouchableOpacity>

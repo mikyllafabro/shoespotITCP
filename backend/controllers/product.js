@@ -74,6 +74,15 @@ exports.getProducts = async (req, res, next) => {
         if (req.query.brand) {
             query.brand = req.query.brand;
         }
+        if (req.query['price.min'] || req.query['price.max']) {
+          query.price = {};
+          if (req.query['price.min']) {
+              query.price.$gte = parseFloat(req.query['price.min']);
+          }
+          if (req.query['price.max']) {
+              query.price.$lte = parseFloat(req.query['price.max']);
+          }
+      }
 
         console.log('Final MongoDB query:', query);
 
