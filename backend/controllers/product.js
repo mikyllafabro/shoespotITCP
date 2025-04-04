@@ -4,7 +4,7 @@ const APIFeatures = require('../utils/apiFeatures.js')
 const { admin, db } = require('../utils/firebaseConfig');
 const User = require('../models/UserModel');
 const mongoose = require('mongoose');
-
+const jwt = require('jsonwebtoken');
 
 let Filter;
 
@@ -274,45 +274,77 @@ exports.createProductReview = async (req, res) => {
     try {
         const { rating, comment } = req.body;
         const { id: productId } = req.params;
+        const token = req.headers.authorization?.split(' ')[1];
 
-        // Basic validation
-        if (!rating || !comment) {
-            return res.status(400).json({
+        if (!token) {
+            return res.status(401).json({
                 success: false,
-                message: 'Please provide both rating and comment'
+                message: 'Please login to write a review'
             });
         }
 
-        const product = await Product.findById(productId);
-        if (!product) {
-            return res.status(404).json({
+        try {
+            // Verify JWT token and get user info
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            console.log('Decoded token:', decoded); // Debug log
+
+            const user = await User.findById(decoded.id);
+            console.log('Found user:', user); // Debug log
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'User not found'
+                });
+            }
+
+            // Basic validation
+            if (!rating || !comment) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Please provide both rating and comment'
+                });
+            }
+
+            const product = await Product.findById(productId);
+            if (!product) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Product not found'
+                });
+            }
+
+            // Create review with actual user data
+            const review = {
+                user: user._id,
+                name: user.name,
+                userImage: user.userImage || '',
+                rating: Number(rating),
+                comment,
+                createdAt: new Date()
+            };
+
+            product.reviews.push(review);
+            product.numOfReviews = product.reviews.length;
+
+            // Calculate average rating
+            product.ratings = product.reviews.reduce((acc, item) => acc + item.rating, 0) 
+                / product.reviews.length;
+
+            await product.save();
+
+            res.status(201).json({
+                success: true,
+                message: 'Review added successfully',
+                review
+            });
+        } catch (tokenError) {
+            console.error('Token verification error:', tokenError);
+            return res.status(401).json({
                 success: false,
-                message: 'Product not found'
+                message: 'Invalid or expired token'
             });
         }
-
-        // Create review with dummy user data for testing
-        const review = {
-            user: new mongoose.Types.ObjectId(), // Generate a random ObjectId
-            name: "Test User",
-            rating: Number(rating),
-            comment
-        };
-
-        product.reviews.push(review);
-        product.numOfReviews = product.reviews.length;
-
-        // Calculate average rating
-        product.ratings = product.reviews.reduce((acc, item) => acc + item.rating, 0) 
-            / product.reviews.length;
-
-        await product.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Review added successfully',
-            review
-        });
     } catch (error) {
         console.error('Create review error:', error);
         res.status(500).json({

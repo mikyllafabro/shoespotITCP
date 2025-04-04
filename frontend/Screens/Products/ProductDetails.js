@@ -187,7 +187,26 @@ const ProductDetails = ({ route, navigation }) => {
                                 {reviews.map((review) => (
                                     <View key={review._id || Math.random()} style={styles.reviewItem}>
                                         <View style={styles.reviewHeader}>
-                                            <Text style={styles.reviewerName}>{review.name}</Text>
+                                            <View style={styles.userInfo}>
+                                                {review.userImage ? (
+                                                    <Image 
+                                                        source={{ uri: review.userImage }} 
+                                                        style={styles.userImage} 
+                                                    />
+                                                ) : (
+                                                    <View style={styles.userImagePlaceholder}>
+                                                        <Text style={styles.userInitial}>
+                                                            {review.name ? review.name[0].toUpperCase() : '?'}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                                <View>
+                                                    <Text style={styles.reviewerName}>{review.name}</Text>
+                                                    <Text style={styles.reviewDate}>
+                                                        {new Date(review.createdAt).toLocaleDateString()}
+                                                    </Text>
+                                                </View>
+                                            </View>
                                             <Text style={styles.reviewRating}>
                                                 {'★'.repeat(review.rating)}
                                             </Text>
@@ -468,20 +487,42 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 4,
     },
+    userInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    userImage: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    userImagePlaceholder: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#1a56a4',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    userInitial: {
+        color: 'white',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
     reviewerName: {
         fontSize: 16,
         fontWeight: '500',
         color: '#333',
     },
+    reviewDate: {
+        fontSize: 12,
+        color: '#666',
+    },
     reviewRating: {
         fontSize: 16,
         color: '#f39c12',
         fontWeight: 'bold',
-    },
-    reviewDate: {
-        fontSize: 12,
-        color: '#999',
-        marginBottom: 4,
     },
     reviewComment: {
         fontSize: 14,
