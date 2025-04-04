@@ -151,20 +151,11 @@ exports.updateProduct = async (req, res, next) => {
         const updates = { ...req.body };
         
         // Handle numeric fields
-        if (updates.price) updates.price = Number(updates.price);
-        if (updates.discount) updates.discount = Number(updates.discount);
-        if (updates.stock) updates.stock = Number(updates.stock);
-
-        // Calculate new discounted price if price or discount changed
-        if (updates.price || updates.discount) {
-            const product = await Product.findById(req.params.id);
-            const newPrice = updates.price || product.price;
-            const newDiscount = updates.discount || product.discount;
-            updates.discountedPrice = +(newPrice * (1 - newDiscount/100)).toFixed(2);
-        }
+        if (updates.price !== undefined) updates.price = Number(updates.price);
+        if (updates.discount !== undefined) updates.discount = Number(updates.discount);
+        if (updates.stock !== undefined) updates.stock = Number(updates.stock);
 
         let product = await Product.findById(req.params.id);
-
         if (!product) {
             return res.status(404).json({
                 success: false,
@@ -172,13 +163,14 @@ exports.updateProduct = async (req, res, next) => {
             });
         }
 
-        // Handle numeric fields
-        if (req.body.stock) req.body.stock = Number(req.body.stock);
-        if (req.body.price) req.body.price = Number(req.body.price);
-        if (req.body.discount) req.body.discount = Number(req.body.discount);
+        // Calculate new discounted price
+        if (updates.price !== undefined || updates.discount !== undefined) {
+            const newPrice = updates.price ?? product.price;
+            const newDiscount = updates.discount ?? product.discount;
+            updates.discountedPrice = +(newPrice * (1 - newDiscount/100)).toFixed(2);
+        }
 
         // Handle images if present
-        let imagesLinks = [];
         if (req.files && req.files.length > 0) {
             // Delete old images from cloudinary
             for (let i = 0; i < product.images.length; i++) {
@@ -186,6 +178,7 @@ exports.updateProduct = async (req, res, next) => {
             }
 
             // Upload new images
+            let imagesLinks = [];
             for (let i = 0; i < req.files.length; i++) {
                 const result = await cloudinary.v2.uploader.upload(req.files[i].path, {
                     folder: 'products',
@@ -195,17 +188,17 @@ exports.updateProduct = async (req, res, next) => {
                     url: result.secure_url
                 });
             }
-            req.body.images = imagesLinks;
+            updates.images = imagesLinks;
         }
 
-        // Log update data
-        console.log('Updating product with data:', req.body);
-
-        product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true,
-            useFindAndModify: false
-        });
+        product = await Product.findByIdAndUpdate(
+            req.params.id, 
+            { $set: updates },
+            {
+                new: true,
+                runValidators: true
+            }
+        );
 
         return res.status(200).json({
             success: true,

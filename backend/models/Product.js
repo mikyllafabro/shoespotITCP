@@ -139,34 +139,25 @@ productSchema.pre('save', function(next) {
     next();
 });
 
-// Add pre-update middleware
+// Replace the pre-findOneAndUpdate middleware with this simplified version
 productSchema.pre('findOneAndUpdate', function(next) {
     const update = this.getUpdate();
-    if (update.price || update.discount) {
-        const price = update.price || this._update.$set.price;
-        const discount = update.discount || this._update.$set.discount || 0;
-        update.discountedPrice = +(price * (1 - discount/100)).toFixed(2);
+    const updateObj = update.$set || update;
+
+    // Ensure we have an $set object
+    this._update.$set = this._update.$set || {};
+
+    // Get price and discount values with proper fallbacks
+    const price = updateObj.price !== undefined ? Number(updateObj.price) : updateObj.$set?.price;
+    const discount = updateObj.discount !== undefined ? Number(updateObj.discount) : updateObj.$set?.discount;
+
+    // Only calculate if we have both price and discount
+    if (price !== undefined) {
+        const finalDiscount = discount !== undefined ? discount : 0;
+        this._update.$set.discountedPrice = +(price * (1 - finalDiscount/100)).toFixed(2);
     }
+
     next();
-});
-
-// Add pre-findOneAndUpdate middleware
-productSchema.pre('findOneAndUpdate', function(next) {
-  const update = this.getUpdate();
-  const price = update.price || this._update.$set?.price;
-  const discount = update.discount || this._update.$set?.discount;
-
-  if (price || discount) {
-    const currentPrice = price || this._update.$set?.price;
-    const currentDiscount = discount || this._update.$set?.discount || 0;
-    
-    if (currentPrice && currentDiscount >= 0) {
-      this._update.$set = this._update.$set || {};
-      this._update.$set.discountedPrice = 
-        +(currentPrice * (1 - currentDiscount/100)).toFixed(2);
-    }
-  }
-  next();
 });
 
 // Add a custom toJSON transform
