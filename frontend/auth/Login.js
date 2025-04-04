@@ -7,6 +7,7 @@ import { useDispatch } from 'react-redux';
 import axios from 'axios';
 import baseUrl from '../assets/common/baseUrl';
 import { login, setCurrentUser } from '../Context/Actions/Auth.actions';
+import 'expo-dev-client';
 
 const Login = () => {
   const navigation = useNavigation();

@@ -19,6 +19,7 @@
     "@reduxjs/toolkit": "^2.6.1",
     "axios": "^1.8.4",
     "expo": "~52.0.38",
+    "expo-dev-client": "^5.0.20",
     "expo-image-picker": "^16.0.6",
     "expo-secure-store": "^14.0.1",
     "expo-sqlite": "~15.1.4",
@@ -34,7 +35,6 @@
     "react-native-toast-message": "^2.2.1",
     "react-redux": "^9.2.0",
     "redux": "^5.0.1",
-    "redux-devtools-extension": "^2.13.9",
     "redux-thunk": "^3.1.0"
   },
   "devDependencies": {

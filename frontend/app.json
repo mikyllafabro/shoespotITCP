@@ -19,11 +19,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.bosstmakulit.shoespotITCP"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": []
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "2b8908bd-c13c-4801-920f-d0209d9dfb41"
+      }
+    }
   }
 }
