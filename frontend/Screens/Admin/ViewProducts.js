@@ -112,20 +112,20 @@ const ViewProducts = ({ navigation }) => {
               <View style={styles.priceDetails}>
                 <View style={styles.originalPriceRow}>
                   <Text style={styles.priceLabel}>Original:</Text>
-                  <Text style={styles.originalPrice}>${item.price?.toFixed(2)}</Text>
+                  <Text style={styles.originalPrice}>₱{item.price?.toFixed(2)}</Text>
                 </View>
                 <View style={styles.discountedPriceRow}>
                   <Text style={styles.priceLabel}>After Discount:</Text>
-                  <Text style={styles.discountedPrice}>${item.discountedPrice?.toFixed(2)}</Text>
+                  <Text style={styles.discountedPrice}>₱{item.discountedPrice?.toFixed(2)}</Text>
                 </View>
                 <Text style={styles.savings}>
-                  Save ${(item.price - (item.discountedPrice || item.price)).toFixed(2)}
+                  Save ₱{(item.price - (item.discountedPrice || item.price)).toFixed(2)}
                 </Text>
               </View>
             </>
           ) : (
             <Text style={styles.regularPrice}>
-              ${item.price?.toFixed(2)}
+              ₱{item.price?.toFixed(2)}
             </Text>
           )}
         </View>

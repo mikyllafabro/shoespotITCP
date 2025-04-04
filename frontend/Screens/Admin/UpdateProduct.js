@@ -456,7 +456,7 @@ const UpdateProduct = ({ navigation, route }) => {
         
         <View style={styles.formRow}>
           <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Price ($) *</Text>
+            <Text style={styles.label}>Price (₱) *</Text>
             <TextInput
               style={styles.input}
               value={price}
@@ -484,7 +484,7 @@ const UpdateProduct = ({ navigation, route }) => {
           <View style={styles.discountInfoContainer}>
             <Text style={styles.discountLabel}>Discounted Price:</Text>
             <Text style={styles.discountedPrice}>
-              ${discountedPrice}
+            ₱{discountedPrice}
             </Text>
             <Text style={styles.savingsText}>
               Save ${(parseFloat(price) - parseFloat(discountedPrice)).toFixed(2)}
@@ -494,7 +494,7 @@ const UpdateProduct = ({ navigation, route }) => {
         
         <View style={styles.formRow}>
           <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Price ($) *</Text>
+            <Text style={styles.label}>Price (₱) *</Text>
             <TextInput
               style={styles.input}
               value={price}
