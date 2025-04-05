@@ -15,7 +15,9 @@ const {
     deleteUser, 
     getUsers,
     getAllUsers,  
-    updateFcmToken
+    updateFcmToken,
+    googleLogin, // Add this import
+    syncUser // Add this import for the sync-user route
 } = require('../controllers/AuthController');
 
 
@@ -32,6 +34,12 @@ router.post('/update-fcm-token', protect, updateFcmToken);  // To update FCM tok
 router.get('/check-email/:email', checkEmail);  // To check if email exists
 router.delete('/delete-user/:email', deleteUser);  // To delete user by email
 router.get('/users', auth, getAllUsers);  // To get all users
+
+// Add Google login route
+router.post('/google-login', googleLogin);
+
+// Add a route for sync-user with the correct controller function
+router.post('/sync-user', syncUser);
 
 router.put('/profile', auth, async (req, res) => {
   try {

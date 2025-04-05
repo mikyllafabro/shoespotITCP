@@ -407,3 +407,179 @@ exports.updateFcmToken = async (req, res) => {
       return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+// Add a specific syncUser function
+exports.syncUser = async (req, res) => {
+  try {
+    const { email, name, photo, uid, googleId } = req.body;
+    
+    console.log('Received sync request for:', email);
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email is required for user sync' 
+      });
+    }
+
+    // Check if user exists in MongoDB
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user if not found
+      user = new User({
+        email,
+        name: name || email.split('@')[0],
+        firebaseUid: uid,
+        googleId: googleId || uid,
+        userImage: photo,
+        role: 'user',
+        status: 'active'
+      });
+      
+      await user.save();
+      console.log('Created new user during sync:', email);
+    } else {
+      // Update existing user
+      user.name = name || user.name;
+      user.firebaseUid = uid || user.firebaseUid;
+      user.googleId = googleId || user.googleId || uid;
+      if (photo) user.userImage = photo;
+      user.lastSyncedAt = new Date();
+      
+      await user.save();
+      console.log('Updated existing user during sync:', email);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user._id,
+        email: user.email,
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'shoespot',
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        status: user.status,
+        userImage: user.userImage,
+        firebaseUid: user.firebaseUid,
+        googleId: user.googleId
+      }
+    });
+  } catch (error) {
+    console.error('User sync error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'User sync failed',
+      error: error.message
+    });
+  }
+};
+
+// Update the googleLogin function to properly handle Google authentication
+exports.googleLogin = async (req, res) => {
+  try {
+    // Extract data from request
+    const { idToken, user } = req.body;
+    
+    console.log('Received Google login request:', {
+      email: user?.email,
+      name: user?.name,
+      hasIdToken: !!idToken
+    });
+
+    // Check if we have required user data
+    if (!user || !user.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'User email is required'
+      });
+    }
+
+    // Try to find the user in MongoDB
+    let mongoUser = await User.findOne({ 
+      $or: [
+        { email: user.email },
+        { googleId: user.googleId }
+      ]
+    });
+    
+    if (mongoUser) {
+      console.log('Found existing user in MongoDB:', mongoUser.email);
+      
+      // Update the existing user with any new information
+      if (user.photo && !mongoUser.userImage) mongoUser.userImage = user.photo;
+      if (user.uid && !mongoUser.firebaseUid) mongoUser.firebaseUid = user.uid;
+      if (user.googleId && !mongoUser.googleId) mongoUser.googleId = user.googleId;
+      
+      // Update other fields if needed
+      mongoUser.name = user.name || mongoUser.name;
+      mongoUser.lastLogin = new Date();
+      
+      await mongoUser.save();
+      console.log('Updated existing user data');
+    } else {
+      // User doesn't exist, create a new one
+      console.log('Creating new user in MongoDB:', user.email);
+      
+      mongoUser = new User({
+        email: user.email,
+        name: user.name || user.email.split('@')[0],
+        firebaseUid: user.uid,
+        googleId: user.googleId,
+        userImage: user.photo,
+        role: 'user',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      await mongoUser.save();
+      console.log('New user created in MongoDB:', user.email);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: mongoUser._id,
+        email: mongoUser.email,
+        role: mongoUser.role 
+      },
+      process.env.JWT_SECRET || 'shoespot',
+      { expiresIn: '7d' }
+    );
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: mongoUser._id,
+        email: mongoUser.email,
+        name: mongoUser.name,
+        role: mongoUser.role,
+        status: mongoUser.status,
+        userImage: mongoUser.userImage,
+        firebaseUid: mongoUser.firebaseUid,
+        googleId: mongoUser.googleId
+      }
+    });
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Google authentication failed',
+      error: error.message
+    });
+  }
+};

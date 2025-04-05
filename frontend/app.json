@@ -4,6 +4,7 @@
     "slug": "shoespotITCP",
     "version": "1.0.0",
     "orientation": "portrait",
+    "entryPoint": "./App.js",
     "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -13,19 +14,52 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bosstmakulit.shoespotITCP"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.bosstmakulit.shoespotITCP"
+      "googleServicesFile": "./google-services.json",
+      "package": "com.bosstmakulit.shoespotITCP",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET"
+      ],
+      "debuggerHost": "192.168.1.254:8081",
+      "enableHermes": true
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/logo.png"
     },
-    "plugins": [],
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "webClientId": "494847191014-orrubiee294s4oqerkbn5fdtp4ce0tjg.apps.googleusercontent.com",
+          "iosUrlScheme": "com.googleusercontent.apps.494847191014-orrubiee294s4oqerkbn5fdtp4ce0tjg"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app needs access to your photos to set your profile picture."
+        }
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
+    ],
+    "scheme": "shoespotITCP",
     "extra": {
       "eas": {
         "projectId": "2b8908bd-c13c-4801-920f-d0209d9dfb41"

@@ -1,0 +1,36 @@
+// ...existing code...
+
+android {
+    // ...existing code...
+    
+    defaultConfig {
+        applicationId "com.bosstmakulit.shoespotITCP"
+        // ...existing code...
+    }
+    
+    // ...existing code...
+    
+    signingConfigs {
+        debug {
+            // Make sure these match exactly with your Firebase console
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        // ...existing code...
+    }
+    
+    // ...existing code...
+}
+
+dependencies {
+    // ...existing code...
+    
+    // Make sure Google Sign-In dependencies are properly added
+    implementation "com.google.android.gms:play-services-auth:20.7.0"
+    
+    // ...existing code...
+}
+
+// ...existing code...

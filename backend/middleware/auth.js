@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/UserModel');
+const admin = require('firebase-admin');
 
 const protect = async (req, res, next) => {
     try {
@@ -39,10 +40,12 @@ const protect = async (req, res, next) => {
 
             next();
         } catch (jwtError) {
-            // If JWT fails, try finding user by token
-            const user = await User.findOne({ 'tokens.token': token });
+            // If JWT fails, try Firebase verification
+            const decodedFirebase = await admin.auth().verifyIdToken(token);
+            const user = await User.findOne({ email: decodedFirebase.email });
+            
             if (!user) {
-                throw new Error('Invalid or expired token');
+                throw new Error('User not found');
             }
 
             // Add user info to request

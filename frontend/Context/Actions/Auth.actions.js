@@ -1,45 +1,40 @@
 export const LOGIN = "LOGIN";
+export const LOGIN_FAIL = "LOGIN_FAIL";
 export const LOGOUT = "LOGOUT";
 export const REGISTER_SUCCESS = "REGISTER_SUCCESS";
 export const SET_CURRENT_USER = "SET_CURRENT_USER";
 export const SET_CART_LOADING = "SET_CART_LOADING";
 export const SET_CART_ERROR = "SET_CART_ERROR";
+export const GOOGLE_LOGIN_SUCCESS = "GOOGLE_LOGIN_SUCCESS";
 
 // Auth action creators
 export const login = (userData) => {
-  const user = userData.user || userData;
   return {
     type: LOGIN,
     payload: {
-      user: {
-        id: user.id || user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        firebaseUid: user.firebaseUid,
-        status: user.status,
-        userImage: user.userImage
-      },
-      token: userData.token
+      user: userData?.user || userData,
+      token: userData?.token || null
     }
   };
 };
 
-export const setCurrentUser = (userData) => {
-  return {
-    type: SET_CURRENT_USER,
-    payload: {
-      user: userData.user,
-      token: userData.token
-    }
-  };
-};
+export const loginFail = (error) => ({
+  type: LOGIN_FAIL,
+  payload: error
+});
 
-export const logout = () => {
-  return {
-    type: LOGOUT
-  };
-};
+export const setCurrentUser = (userData) => ({
+  type: SET_CURRENT_USER,
+  payload: {
+    user: userData?.user || null,
+    token: userData?.token || null,
+    isAuthenticated: Boolean(userData?.user)
+  }
+});
+
+export const logout = () => ({
+  type: LOGOUT
+});
 
 export const registerSuccess = (userData) => {
     return {
@@ -57,6 +52,16 @@ export const setCartError = (error) => ({
   type: SET_CART_ERROR,
   payload: error
 });
+
+export const googleLoginSuccess = (userData) => {
+  return {
+    type: GOOGLE_LOGIN_SUCCESS,
+    payload: {
+      user: userData.user,
+      token: userData.token
+    }
+  };
+};
 
 export const getUserProfile = async () => {
   try {
