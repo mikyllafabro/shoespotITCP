@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 let baseURL = '';
 
 if (Platform.OS === 'android') {
-    baseURL = 'http://192.168.1.100:5000/api/v1';  // Make sure this matches your MongoDB server
+    baseURL = 'http://192.168.1.58:5000/api/v1';  // Make sure this matches your MongoDB server
 } else {
     baseURL = 'http://localhost:5000/api/v1';
 }

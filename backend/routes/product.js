@@ -14,7 +14,8 @@ const {
     deleteReview,
     getUserProductReview,
     getUserAllReviews,
-    getInventoryStats
+    getInventoryStats,
+    updateProductReview // Add this controller import
 } = require('../controllers/product');
 
 //USER
@@ -23,12 +24,17 @@ router.get('/products/:id', getSingleProduct); // Changed from /product/:id to /
 router.get('/products', getProducts);  // This should match the frontend route
 router.get('/product/:productId/reviews', getProductReviews);
 
-router.get('/product/:productId/my-review', getUserProductReview);
-router.get('/product/user-reviews', getUserAllReviews);
-router.post('/product/:id/review', createProductReview);
+router.get('/product/:productId/my-review', protect, getUserProductReview);
+router.get('/product/user-reviews', protect, getUserAllReviews);
 
-// Update the can-review route to bypass auth temporarily
-router.get('/product/:productId/can-review', async (req, res) => {
+// Keep the review route as /product/:id/review 
+router.post('/product/:id/review', protect, createProductReview);
+
+// Add route for updating reviews
+router.put('/product/:id/review/:reviewId', protect, updateProductReview);
+
+// Keep the can-review route
+router.get('/product/:id/can-review', async (req, res) => {
     try {
         // For testing purposes, always allow reviews
         res.json({

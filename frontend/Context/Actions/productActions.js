@@ -398,35 +398,76 @@ export const checkCanReviewProduct = (productId) => async (dispatch) => {
   }
 };
 
-export const createProductReview = (productId, review) => async (dispatch) => {
+// Create or update product review
+export const createProductReview = (productId, reviewData, reviewId = null) => async (dispatch, getState) => {
   try {
     dispatch({ type: PRODUCT_REVIEW_REQUEST });
-    
-    const { data } = await axios.post(
-      `${baseURL}/product/${productId}/review`,
-      review,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      }
-    );
 
-    dispatch({
-      type: PRODUCT_REVIEW_SUCCESS,
-      payload: data.review
+    // Validate product ID
+    if (!productId) {
+      throw new Error('Product ID is required');
+    }
+
+    // Get token from state or secure store
+    let token = getState().auth?.token;
+    
+    if (!token) {
+      token = await SecureStore.getItemAsync('jwt');
+    }
+    
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    // Configure headers with token
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    let url = `${baseURL}/product/${productId}/review`;
+    let method = 'post';
+    
+    // If reviewId is provided, use PUT method to update instead of POST to create
+    if (reviewId) {
+      url = `${baseURL}/product/${productId}/review/${reviewId}`;
+      method = 'put';
+      console.log(`Updating review: ${reviewId} for product: ${productId}`);
+    } else {
+      console.log(`Creating new review for product: ${productId}`);
+    }
+    
+    // Log what we're sending
+    console.log(`Submitting review to: ${url}`);
+    console.log('Review data:', reviewData);
+    
+    // Send review to backend using appropriate method
+    const { data } = await axios({
+      method,
+      url,
+      data: reviewData,
+      headers: config.headers
     });
 
-    // Immediately fetch updated reviews
-    await dispatch(fetchProductReviews(productId));
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to submit review');
+    }
 
+    dispatch({ type: PRODUCT_REVIEW_SUCCESS });
+    
+    // Return success data
+    return data;
   } catch (error) {
-    console.error('Review creation error:', error);
+    console.error('Review submission error:', error);
     dispatch({
       type: PRODUCT_REVIEW_FAIL,
-      payload: error.response?.data?.message || 'Failed to create review'
+      payload: error.response && error.response.data.message
+        ? error.response.data.message
+        : error.message,
     });
+    throw error;
   }
 };
 

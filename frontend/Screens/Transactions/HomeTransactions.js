@@ -8,17 +8,21 @@ import {
   RefreshControl,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import axios from 'axios';
 import baseURL from '../../assets/common/baseUrl';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import ReviewModal from '../Modals/ReviewModal';
 
 const HomeTransactions = ({ navigation }) => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isReviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const fetchTransactions = async () => {
     try {
@@ -42,7 +46,24 @@ const HomeTransactions = ({ navigation }) => {
       console.log('Transaction response:', response.data);
 
       if (response.data.success) {
-        setTransactions(response.data.orders);
+        // Process the order items to ensure product ID is included
+        const processedOrders = response.data.orders.map(order => {
+          const processedItems = order.orderItems.map(item => {
+            // First check if product is an object with _id
+            if (item.product && typeof item.product === 'object' && item.product._id) {
+              return { ...item, productId: item.product._id };
+            }
+            // Then check if product is a string (ID)
+            else if (item.product && typeof item.product === 'string') {
+              return { ...item, productId: item.product };
+            }
+            return item;
+          });
+          
+          return { ...order, orderItems: processedItems };
+        });
+        
+        setTransactions(processedOrders);
         setError(null);
       } else {
         setError('No transactions found');
@@ -59,6 +80,21 @@ const HomeTransactions = ({ navigation }) => {
   useEffect(() => {
     fetchTransactions();
   }, []);
+
+  // Add a function to find product ID from the raw API response
+  const getProductIdFromOrderItem = (item) => {
+    // Log full item for debugging
+    console.log('Item structure:', JSON.stringify(item));
+    
+    // Try all possible locations where product ID might be
+    if (item._id) return item._id;
+    if (item.product) return item.product;
+    if (item.productId) return item.productId;
+    
+    // If we can't find it, try to get it from the item name
+    // This requires modifying your backend to include product ID in responses
+    return null;
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -97,6 +133,20 @@ const HomeTransactions = ({ navigation }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Orders</Text>
       </View>
+
+      {/* Review Modal */}
+      {selectedProduct && (
+        <ReviewModal 
+          visible={isReviewModalVisible}
+          onClose={() => {
+            setReviewModalVisible(false);
+            setSelectedProduct(null);
+          }}
+          productId={selectedProduct._id || selectedProduct.product}
+          productName={selectedProduct.name}
+          productImage={selectedProduct.image}
+        />
+      )}
 
       {loading ? (
         <View style={styles.centered}>
@@ -150,7 +200,111 @@ const HomeTransactions = ({ navigation }) => {
                         {item.name}
                       </Text>
                       <Text style={styles.itemQuantity}>x{item.quantity}</Text>
-                      <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+                      <Text style={styles.itemPrice}>₱{item.price.toFixed(2)}</Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.reviewButton,
+                          transaction.orderStatus.toLowerCase() !== 'completed' && styles.disabledReviewButton
+                        ]}
+                        onPress={() => {
+                          // Only allow reviews for completed orders
+                          if (transaction.orderStatus.toLowerCase() !== 'completed') {
+                            Alert.alert(
+                              'Cannot Review Yet',
+                              'You can only review products from completed orders.',
+                              [{ text: 'OK' }]
+                            );
+                            return;
+                          }
+                          
+                          // Look for the product ID or fetch it if missing
+                          console.log('Order item:', JSON.stringify(item));
+                          
+                          // If we don't have a product ID, fetch it by name
+                          const fetchProductIdByName = async (productName) => {
+                            try {
+                              const token = await SecureStore.getItemAsync('jwt');
+                              console.log(`Fetching product ID for: ${productName}`);
+                              
+                              // Use the product API search feature to find the product
+                              const response = await axios.get(
+                                `${baseURL}/products?keyword=${encodeURIComponent(productName)}`,
+                                {
+                                  headers: { 
+                                    Authorization: `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                  }
+                                }
+                              );
+                              
+                              console.log('Product search response:', response.data);
+                              
+                              // Find the matching product
+                              if (response.data.success && response.data.products && response.data.products.length > 0) {
+                                // Try to find an exact match by name
+                                const exactMatch = response.data.products.find(
+                                  p => p.name.toLowerCase() === productName.toLowerCase()
+                                );
+                                
+                                if (exactMatch) {
+                                  console.log(`Found exact match for ${productName}:`, exactMatch._id);
+                                  return exactMatch._id;
+                                }
+                                
+                                // If no exact match, use the first result
+                                console.log(`Using first result for ${productName}:`, response.data.products[0]._id);
+                                return response.data.products[0]._id;
+                              }
+                              
+                              return null;
+                            } catch (error) {
+                              console.error('Error fetching product ID:', error);
+                              return null;
+                            }
+                          };
+                          
+                          // Check if we already have the product ID
+                          let productId = null;
+                          if (item.productId) {
+                            productId = item.productId;
+                          } else if (item.product) {
+                            productId = typeof item.product === 'object' ? item.product._id : item.product;
+                          }
+                          
+                          // If we don't have the product ID, open the review modal after fetching it
+                          if (!productId) {
+                            // Remove the alert dialog and fetch the ID directly
+                            const fetchIdAndOpenModal = async () => {
+                              const fetchedId = await fetchProductIdByName(item.name);
+                              if (fetchedId) {
+                                const productToReview = {
+                                  _id: fetchedId,
+                                  name: item.name,
+                                  image: item.image
+                                };
+                                console.log('Product to review with fetched ID:', productToReview);
+                                setSelectedProduct(productToReview);
+                                setReviewModalVisible(true);
+                              } else {
+                                Alert.alert('Error', 'Could not find product to review. Please try again later.');
+                              }
+                            };
+                            fetchIdAndOpenModal();
+                          } else {
+                            // We already have the product ID, so proceed directly
+                            console.log('Using productId:', productId);
+                            const productToReview = {
+                              _id: productId,
+                              name: item.name,
+                              image: item.image
+                            };
+                            setSelectedProduct(productToReview);
+                            setReviewModalVisible(true);
+                          }
+                        }}
+                      >
+                        <Text style={styles.reviewButtonText}>Review</Text>
+                      </TouchableOpacity>
                     </View>
                   ))}
                 </View>
@@ -158,7 +312,7 @@ const HomeTransactions = ({ navigation }) => {
                 <View style={styles.totalContainer}>
                   <Text style={styles.totalLabel}>Total Amount</Text>
                   <Text style={styles.totalAmount}>
-                    ${transaction.totalPrice.toFixed(2)}
+                    ₱{transaction.totalPrice.toFixed(2)}
                   </Text>
                 </View>
               </View>
@@ -262,6 +416,16 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
+  reviewButton: {
+    backgroundColor: '#1a56a4',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  reviewButtonText: {
+    color: 'white',
+    fontSize: 12,
+  },
   totalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -290,6 +454,9 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
     textAlign: 'center',
+  },
+  disabledReviewButton: {
+    backgroundColor: '#ccc',
   },
 });
 

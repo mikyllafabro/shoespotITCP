@@ -270,81 +270,65 @@ exports.deleteProduct = async (req, res, next) => {
     }
 };
 
+// Create or Update product review
 exports.createProductReview = async (req, res) => {
     try {
         const { rating, comment } = req.body;
-        const { id: productId } = req.params;
-        const token = req.headers.authorization?.split(' ')[1];
+        // Use id instead of productId to match the route pattern
+        const productId = req.params.id; 
+        
+        console.log(`Creating review for product: ${productId}`);
+        console.log(`Review data:`, req.body);
 
-        if (!token) {
-            return res.status(401).json({
+        if (!rating || !comment) {
+            return res.status(400).json({
                 success: false,
-                message: 'Please login to write a review'
+                message: 'Please provide both rating and comment'
             });
         }
 
-        try {
-            // Verify JWT token and get user info
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-            console.log('Decoded token:', decoded); // Debug log
-
-            const user = await User.findById(decoded.id);
-            console.log('Found user:', user); // Debug log
-
-            if (!user) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'User not found'
-                });
-            }
-
-            // Basic validation
-            if (!rating || !comment) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Please provide both rating and comment'
-                });
-            }
-
-            const product = await Product.findById(productId);
-            if (!product) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Product not found'
-                });
-            }
-
-            // Create review with actual user data
-            const review = {
-                user: user._id,
-                name: user.name,
-                userImage: user.userImage || '',
-                rating: Number(rating),
-                comment,
-                createdAt: new Date()
-            };
-
-            product.reviews.push(review);
-            product.numOfReviews = product.reviews.length;
-
-            // Calculate average rating
-            product.ratings = product.reviews.reduce((acc, item) => acc + item.rating, 0) 
-                / product.reviews.length;
-
-            await product.save();
-
-            res.status(201).json({
-                success: true,
-                message: 'Review added successfully',
-                review
-            });
-        } catch (tokenError) {
-            console.error('Token verification error:', tokenError);
-            return res.status(401).json({
+        // Validate the product ID
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({
                 success: false,
-                message: 'Invalid or expired token'
+                message: 'Invalid product ID format'
             });
         }
+
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
+
+        // Create review with user data from req.user (set by auth middleware)
+        const review = {
+            user: req.user.id,
+            name: req.user.name,
+            userImage: req.user.photo || '',
+            rating: Number(rating),
+            comment,
+            createdAt: new Date()
+        };
+
+        console.log('Creating review with user data:', review);
+
+        product.reviews.push(review);
+        product.numOfReviews = product.reviews.length;
+
+        // Calculate average rating
+        product.ratings = product.reviews.reduce((acc, item) => acc + item.rating, 0) 
+            / product.reviews.length;
+
+        await product.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Review added successfully',
+            review
+        });
     } catch (error) {
         console.error('Create review error:', error);
         res.status(500).json({
@@ -355,109 +339,220 @@ exports.createProductReview = async (req, res) => {
 };
   
     
-    exports.getUserProductReview = async (req, res) => {
-      try {
-        const { productId } = req.params; // Use req.params for productId
-        const authHeader = req.headers.authorization;
+exports.getUserProductReview = async (req, res) => {
+  try {
+    const { productId } = req.params;
     
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-          return res.status(401).json({ message: 'Unauthorized: No token provided.' });
-        }
+    // Get user ID from auth middleware
+    const userId = req.user.id;
     
-        const token = authHeader.split(' ')[1];
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        const firebaseUid = decodedToken.uid;
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'User not authenticated' 
+      });
+    }
+
+    console.log('Fetching review for Product ID:', productId, 'User ID:', userId);
+
+    // Validate the productId
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      console.log('Invalid Product ID format:', productId);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid Product ID format.' 
+      });
+    }
+
+    // Fetch the product
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Product not found.' 
+      });
+    }
+
+    // Fetch the user's review
+    const userReview = product.reviews.find(
+      (review) => review.user.toString() === userId.toString()
+    );
+
+    if (!userReview) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No review found for this product by the user.' 
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      review: userReview,
+    });
+  } catch (error) {
+    console.error('Error fetching user review:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch user review.',
+      error: error.message
+    });
+  }
+};
     
-        console.log('Product ID:', productId);
+exports.getUserAllReviews = async (req, res) => {
+  try {
+    // Get the user ID from the authenticated request
+    const userId = req.user.id;
     
-        const user = await User.findOne({ firebaseUid });
-        if (!user) {
-          return res.status(404).json({ message: 'User not found.' });
-        }
-    
-        console.log('MongoDB User ID:', user._id);
-    
-        // Validate the productId
-        if (!mongoose.isValidObjectId(productId)) {
-          console.log('Invalid Product ID format:', productId);
-          return res.status(400).json({ message: 'Invalid Product ID format.' });
-        }
-    
-        // Fetch the product
-        const product = await Product.findById(productId);
-        if (!product) {
-          return res.status(404).json({ message: 'Product not found.' });
-        }
-    
-        // Fetch the user's review
-        const userReview = product.reviews.find(
-          (review) => review.user.toString() === user._id.toString()
-        );
-    
-        if (!userReview) {
-          return res.status(404).json({ message: 'No review found for this product by the user.' });
-        }
-    
-        return res.status(200).json({
-          success: true,
-          review: userReview,
-        });
-      } catch (error) {
-        console.error('Error fetching user review:', error);
-        return res.status(500).json({ message: 'Failed to fetch user review.' });
-      }
-    };  
-    
-    exports.getUserAllReviews = async (req, res) => {
-      try {
-        const authHeader = req.headers.authorization;
-    
-        // Decode Firebase token to get the user's Firebase UID
-        const token = authHeader.split(' ')[1];
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        const firebaseUid = decodedToken.uid;
-    
-        // Find the corresponding MongoDB User ID
-        const user = await User.findOne({ firebaseUid });
-        if (!user) {
-          return res.status(404).json({ message: 'User not found.' });
-        }
-    
-        // Find all products that contain a review by the user
-        const productsWithReviews = await Product.find({
-          'reviews.user': user._id,
-        });
-    
-        // Extract only the reviews made by the user
-        const userReviews = productsWithReviews.map((product) => {
-          const review = product.reviews.find(
-            (review) => review.user.toString() === user._id.toString()
-          );
-          return {
-            productId: product._id,
-            productName: product.name,
-            review,
-          };
-        });
-    
-        return res.status(200).json({
-          success: true,
-          reviews: userReviews,
-        });
-      } catch (error) {
-        console.error('Error fetching user reviews:', error);
-        return res.status(500).json({ message: 'Failed to fetch user reviews.' });
-      }
-    };
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'User not authenticated' 
+      });
+    }
+
+    console.log('Fetching all reviews for user:', userId);
+
+    // Find all products that contain a review by the user
+    const productsWithReviews = await Product.find({
+      'reviews.user': userId,
+    });
+
+    console.log(`Found ${productsWithReviews.length} products with reviews by user`);
+
+    // Extract only the reviews made by the user
+    const userReviews = productsWithReviews.map((product) => {
+      const review = product.reviews.find(
+        (review) => review.user.toString() === userId.toString()
+      );
+      return {
+        productId: product._id,
+        productName: product.name,
+        productImage: product.images && product.images.length > 0 ? product.images[0].url : null,
+        review,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      reviews: userReviews,
+    });
+  } catch (error) {
+    console.error('Error fetching user reviews:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch user reviews',
+      error: error.message
+    });
+  }
+};
       
-  //get reviews
-  exports.getProductReviews = async (req, res) => {
+//get reviews
+exports.getProductReviews = async (req, res) => {
+  try {
+      const { productId } = req.params;
+
+      console.log('Fetching reviews for product:', productId);
+
+      const product = await Product.findById(productId);
+      if (!product) {
+          return res.status(404).json({
+              success: false,
+              message: 'Product not found'
+          });
+      }
+
+      // Ensure we have reviews array and it's sorted
+      const reviews = product.reviews || [];
+      const sortedReviews = reviews.sort((a, b) => 
+          new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      );
+
+      console.log('Found reviews:', sortedReviews);
+
+      return res.status(200).json({
+          success: true,
+          reviews: sortedReviews
+      });
+  } catch (error) {
+      console.error('Error fetching product reviews:', error);
+      return res.status(500).json({
+          success: false,
+          message: 'Failed to fetch product reviews'
+      });
+  }
+};
+  
+//delete review
+exports.deleteReview = async (req, res) => {
+  try {
+      const { productId, reviewId } = req.params;
+
+      // Find the product by its ID
+      const product = await Product.findById(productId);
+
+      if (!product) {
+          return res.status(404).json({
+              success: false,
+              message: 'Product not found',
+          });
+      }
+
+      // Find the review to delete
+      const reviewIndex = product.reviews.findIndex(
+          (review) => review._id.toString() === reviewId
+      );
+
+      if (reviewIndex === -1) {
+          return res.status(404).json({
+              success: false,
+              message: 'Review not found',
+          });
+      }
+
+      // Remove the review
+      product.reviews.splice(reviewIndex, 1);
+
+      // Recalculate ratings and numOfReviews
+      const numOfReviews = product.reviews.length;
+      const ratings =
+          numOfReviews > 0
+              ? product.reviews.reduce((acc, review) => acc + review.rating, 0) / numOfReviews
+              : 0;
+
+      // Update the product document
+      product.numOfReviews = numOfReviews;
+      product.ratings = ratings;
+
+      await product.save();
+
+      return res.status(200).json({
+          success: true,
+          message: 'Review deleted successfully',
+          product,
+      });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({
+          success: false,
+          message: 'Server error',
+      });
+  }
+};
+
+// Correctly implemented updateProductReview function
+exports.updateProductReview = async (req, res) => {
     try {
-        const { productId } = req.params;
+        const { id: productId, reviewId } = req.params;
+        const { rating, comment } = req.body;
+        const userId = req.user.id;
 
-        console.log('Fetching reviews for product:', productId);
+        console.log(`Updating review ${reviewId} for product ${productId} by user ${userId}`);
+        console.log('New review data:', { rating, comment });
 
+        // Find the product
         const product = await Product.findById(productId);
+        
         if (!product) {
             return res.status(404).json({
                 success: false,
@@ -465,83 +560,47 @@ exports.createProductReview = async (req, res) => {
             });
         }
 
-        // Ensure we have reviews array and it's sorted
-        const reviews = product.reviews || [];
-        const sortedReviews = reviews.sort((a, b) => 
-            new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        );
-
-        console.log('Found reviews:', sortedReviews);
-
-        return res.status(200).json({
-            success: true,
-            reviews: sortedReviews
-        });
-    } catch (error) {
-        console.error('Error fetching product reviews:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch product reviews'
-        });
-    }
-};
-  
-  //delete review
-  exports.deleteReview = async (req, res) => {
-    try {
-        const { productId, reviewId } = req.params;
-  
-        // Find the product by its ID
-        const product = await Product.findById(productId);
-  
-        if (!product) {
-            return res.status(404).json({
-                success: false,
-                message: 'Product not found',
-            });
-        }
-  
-        // Find the review to delete
+        // Find the review in the product's reviews array
         const reviewIndex = product.reviews.findIndex(
-            (review) => review._id.toString() === reviewId
+            (review) => review._id.toString() === reviewId && review.user.toString() === userId
         );
-  
+
         if (reviewIndex === -1) {
             return res.status(404).json({
                 success: false,
-                message: 'Review not found',
+                message: 'Review not found or not authorized to update'
             });
         }
-  
-        // Remove the review
-        product.reviews.splice(reviewIndex, 1);
-  
-        // Recalculate ratings and numOfReviews
-        const numOfReviews = product.reviews.length;
-        const ratings =
-            numOfReviews > 0
-                ? product.reviews.reduce((acc, review) => acc + review.rating, 0) / numOfReviews
-                : 0;
-  
-        // Update the product document
-        product.numOfReviews = numOfReviews;
-        product.ratings = ratings;
-  
+
+        // Update review
+        product.reviews[reviewIndex].rating = Number(rating);
+        product.reviews[reviewIndex].comment = comment;
+        product.reviews[reviewIndex].updatedAt = new Date();
+
+        // Recalculate product rating
+        product.numOfReviews = product.reviews.length;
+        
+        if (product.reviews.length > 0) {
+            product.ratings = product.reviews.reduce((acc, item) => item.rating + acc, 0) / product.reviews.length;
+        } else {
+            product.ratings = 0;
+        }
+
         await product.save();
-  
-        return res.status(200).json({
+
+        res.status(200).json({
             success: true,
-            message: 'Review deleted successfully',
-            product,
+            message: 'Review updated successfully',
+            review: product.reviews[reviewIndex]
         });
     } catch (error) {
-        console.error(error);
+        console.error('Update review error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error',
+            message: error.message
         });
     }
-  };
+};
 
 exports.getInventoryStats = async (req, res) => {
     try {

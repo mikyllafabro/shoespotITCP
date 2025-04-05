@@ -101,22 +101,20 @@ const Login = () => {
         throw new Error('Invalid response from server');
       }
 
-      dispatch(login({
-        user: data.user,
-        token: data.token
-      }));
-
-      // Store user data with consistent key
+      // Store complete user data including role
       await SecureStore.setItemAsync('jwt', data.token);
       await SecureStore.setItemAsync('user', JSON.stringify({
         id: data.user.id || data.user._id,
         email: data.user.email,
         name: data.user.name,
-        role: data.user.role,
+        role: data.user.role, // Explicitly store the role
         firebaseUid: data.user.firebaseUid,
         status: data.user.status,
         userImage: data.user.userImage
       }));
+      
+      // Also store role separately for easier access
+      await SecureStore.setItemAsync('userRole', data.user.role || 'user');
       
       // Set Authorization header
       axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
@@ -383,6 +381,9 @@ const Login = () => {
     
     // Save the combined user object
     await SecureStore.setItemAsync('user', JSON.stringify(combinedUser));
+    
+    // Also store role separately for easier access
+    await SecureStore.setItemAsync('userRole', serverData.user.role || 'user');
     
     // Set default auth header for future requests
     axios.defaults.headers.common['Authorization'] = `Bearer ${serverData.token}`;

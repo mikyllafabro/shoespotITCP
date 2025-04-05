@@ -38,3 +38,6 @@ yarn-error.*
 node_modules
 .env
 client/node_modules
+
+/google-services.json
+

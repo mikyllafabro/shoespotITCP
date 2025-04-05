@@ -9,13 +9,15 @@ import {
     TouchableOpacity,
     StatusBar,
     Dimensions,
-    Platform
+    Platform,
+    Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { checkCanReviewProduct, fetchProductReviews } from '../../Context/Actions/productActions';
 import CartModal from '../Modals/CartModal';
 import OrderModal from '../Modals/OrderModal';
-import ReviewModal from '../Modals/ReviewModal';  // Add this import
+import ReviewModal from '../Modals/ReviewModal';
+import * as SecureStore from 'expo-secure-store';  // Add SecureStore import
 
 const { width } = Dimensions.get('window');
 
@@ -26,11 +28,29 @@ const ProductDetails = ({ route, navigation }) => {
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [selectedReview, setSelectedReview] = useState(null);
 
     // Update selectors to handle undefined state
     const productReviews = useSelector(state => state.productReviews || { reviews: [], loading: false });
     const { reviews = [], loading: reviewsLoading = false } = productReviews;
     const { canReview = false } = useSelector(state => state.productReview || {});
+
+    // Fetch user info on mount
+    useEffect(() => {
+        const getUserId = async () => {
+            try {
+                const userData = await SecureStore.getItemAsync('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    setCurrentUser(user);
+                }
+            } catch (error) {
+                console.error('Error getting user data:', error);
+            }
+        };
+        getUserId();
+    }, []);
 
     useEffect(() => {
         if (product?._id) {
@@ -47,7 +67,19 @@ const ProductDetails = ({ route, navigation }) => {
     console.log('Reviews from state:', reviews); // Debug log
 
     const handleReviewPress = () => {
+        setSelectedReview(null); // Reset selected review when adding a new one
         setShowReviewModal(true);
+    };
+
+    const handleEditReview = (review) => {
+        setSelectedReview(review);
+        setShowReviewModal(true);
+    };
+
+    // Check if a review belongs to the current user
+    const isUserReview = (review) => {
+        if (!currentUser) return false;
+        return review.user === currentUser._id || review.user === currentUser.id;
     };
 
     return (
@@ -130,7 +162,7 @@ const ProductDetails = ({ route, navigation }) => {
                                 </View>
                             </>
                         ) : (
-                            <Text style={styles.regularPrice}>${product.price.toFixed(2)}</Text>
+                            <Text style={styles.regularPrice}>₱{product.price.toFixed(2)}</Text>
                         )}
                     </View>
 
@@ -171,14 +203,6 @@ const ProductDetails = ({ route, navigation }) => {
                             </Text>
                         </View>
 
-                        {/* Review Button */}
-                        <TouchableOpacity 
-                            style={styles.reviewButton}
-                            onPress={handleReviewPress}
-                        >
-                            <Text style={styles.reviewButtonText}>Write a Review</Text>
-                        </TouchableOpacity>
-
                         {/* Reviews List */}
                         {reviewsLoading ? (
                             <Text style={styles.noReviews}>Loading reviews...</Text>
@@ -187,7 +211,7 @@ const ProductDetails = ({ route, navigation }) => {
                                 {reviews.map((review) => (
                                     <View key={review._id || Math.random()} style={styles.reviewItem}>
                                         <View style={styles.reviewHeader}>
-                                            <View style={styles.userInfo}>
+                                        <View style={styles.userInfo}>
                                                 {review.userImage ? (
                                                     <Image 
                                                         source={{ uri: review.userImage }} 
@@ -209,9 +233,20 @@ const ProductDetails = ({ route, navigation }) => {
                                             </View>
                                             <Text style={styles.reviewRating}>
                                                 {'★'.repeat(review.rating)}
+                                                <Text style={styles.emptyStars}>{'☆'.repeat(5 - review.rating)}</Text>
                                             </Text>
                                         </View>
                                         <Text style={styles.reviewComment}>{review.comment}</Text>
+                                        
+                                        {/* Edit Review Button - Only show for user's own reviews */}
+                                        {isUserReview(review) && (
+                                            <TouchableOpacity 
+                                                style={styles.editReviewButton}
+                                                onPress={() => handleEditReview(review)}
+                                            >
+                                                <Text style={styles.editReviewText}>Edit Review</Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
                                 ))}
                             </View>
@@ -255,11 +290,12 @@ const ProductDetails = ({ route, navigation }) => {
                     navigation={navigation}
                 />
 
-                {/* Add Review Modal */}
+                {/* Add Review Modal with selectedReview prop */}
                 <ReviewModal
                     visible={showReviewModal}
                     onClose={() => setShowReviewModal(false)}
                     productId={product._id}
+                    existingReview={selectedReview}
                 />
             </ScrollView>
         </View>
@@ -444,18 +480,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
-    reviewButton: {
-        backgroundColor: '#4CAF50',
-        padding: 12,
-        borderRadius: 8,
-        alignItems: 'center',
-        marginVertical: 16,
-    },
-    reviewButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
     reviewsContainer: {
         padding: 16,
         backgroundColor: 'white',
@@ -504,6 +528,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#1a56a4',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 10,
     },
     userInitial: {
         color: 'white',
@@ -524,6 +549,9 @@ const styles = StyleSheet.create({
         color: '#f39c12',
         fontWeight: 'bold',
     },
+    emptyStars: {
+        color: '#ddd',
+    },
     reviewComment: {
         fontSize: 14,
         color: '#666',
@@ -534,6 +562,29 @@ const styles = StyleSheet.create({
         color: '#666',
         fontStyle: 'italic',
         marginVertical: 16,
+    },
+    addReviewButton: {
+        backgroundColor: '#1a56a4',
+        padding: 10,
+        borderRadius: 5,
+        alignItems: 'center',
+        marginVertical: 10,
+    },
+    addReviewText: {
+        color: 'white',
+        fontWeight: 'bold',
+    },
+    editReviewButton: {
+        backgroundColor: '#f39c12',
+        padding: 6,
+        borderRadius: 4,
+        alignSelf: 'flex-end',
+        marginTop: 8,
+    },
+    editReviewText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 });
 
