@@ -16,11 +16,6 @@ export const verifyCredentials = () => {
 === ANDROID CREDENTIALS VERIFICATION ===
 Package Name: ${PACKAGE_NAME}
 SHA-1 Certificate Hash: ${CERTIFICATE_HASH_WITH_COLONS}
-
-Make sure these match the values in:
-1. Firebase Console > Project Settings > Your Apps > Android
-2. google-services.json file
-3. Google Cloud Console > APIs & Services > Credentials
   `);
 };
 
@@ -42,7 +37,6 @@ export const compareWithFirebaseConfig = (googleServicesJson) => {
     Package Name Match: ${packageName === PACKAGE_NAME ? '✓ YES' : '✗ NO'}
       App: ${PACKAGE_NAME}
       Firebase: ${packageName}
-    
     SHA-1 Certificate Match: ${certificateHash.toLowerCase() === CERTIFICATE_HASH.toLowerCase() ? '✓ YES' : '✗ NO'}
       App: ${CERTIFICATE_HASH}
       Firebase: ${certificateHash}

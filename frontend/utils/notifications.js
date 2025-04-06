@@ -1,8 +1,19 @@
+import { Alert, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { saveNotification } from '../services/notificationsDB';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 import { baseUrl } from '../assets/common/baseUrl';
-import * as SecureStore from 'expo-secure-store';
+
+// Configure notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 // Add this function to replace getOrderById from Redux
 const fetchOrderDetails = async (orderId) => {

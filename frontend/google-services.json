@@ -1,48 +1,48 @@
 {
-    "project_info": {
-      "project_number": "494847191014",
-      "firebase_url": "https://shoespotdb-default-rtdb.asia-southeast1.firebasedatabase.app",
-      "project_id": "shoespotdb",
-      "storage_bucket": "shoespotdb.firebasestorage.app"
-    },
-    "client": [
-      {
-        "client_info": {
-          "mobilesdk_app_id": "1:494847191014:android:d0873a930fb02ab9bad827",
-          "android_client_info": {
-            "package_name": "com.bosstmakulit.shoespotITCP"
+  "project_info": {
+    "project_number": "494847191014",
+    "firebase_url": "https://shoespotdb-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "shoespotdb",
+    "storage_bucket": "shoespotdb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:494847191014:android:d0873a930fb02ab9bad827",
+        "android_client_info": {
+          "package_name": "com.bosstmakulit.shoespotITCP"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "494847191014-t1h3n3t9585dq337mnpomv0hgrglqscd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bosstmakulit.shoespotITCP",
+            "certificate_hash": "c33678999bf48f62d0a05f2b7dbc76a519172e08"
           }
         },
-        "oauth_client": [
-          {
-            "client_id": "494847191014-71u9vctasukog96584kh53q9gfv6f2i4.apps.googleusercontent.com",
-            "client_type": 1,
-            "android_info": {
-              "package_name": "com.bosstmakulit.shoespotITCP",
-              "certificate_hash": "c9f8ec1fb38f4d5b9d47810b5d82caf13452ea35"
+        {
+          "client_id": "494847191014-orrubiee294s4oqerkbn5fdtp4ce0tjg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNwP4PMqYjYao7d7jSl_3euipCXnbnXHQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "494847191014-orrubiee294s4oqerkbn5fdtp4ce0tjg.apps.googleusercontent.com",
+              "client_type": 3
             }
-          },
-          {
-            "client_id": "494847191014-orrubiee294s4oqerkbn5fdtp4ce0tjg.apps.googleusercontent.com",
-            "client_type": 3
-          }
-        ],
-        "api_key": [
-          {
-            "current_key": "AIzaSyDNwP4PMqYjYao7d7jSl_3euipCXnbnXHQ"
-          }
-        ],
-        "services": {
-          "appinvite_service": {
-            "other_platform_oauth_client": [
-              {
-                "client_id": "494847191014-orrubiee294s4oqerkbn5fdtp4ce0tjg.apps.googleusercontent.com",
-                "client_type": 3
-              }
-            ]
-          }
+          ]
         }
       }
-    ],
-    "configuration_version": "1"
-  }
+    }
+  ],
+  "configuration_version": "1"
+}

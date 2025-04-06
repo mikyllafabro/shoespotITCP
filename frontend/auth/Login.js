@@ -17,6 +17,7 @@ import { verifyCredentials } from '../android-credentials';
 import { PACKAGE_NAME, CERTIFICATE_HASH, CERTIFICATE_HASH_WITH_COLONS } from '../android-credentials';
 // Import Firestore functions directly since there's an issue with GoogleAuthProvider
 import { doc, setDoc } from 'firebase/firestore';
+import { registerForPushNotificationsAsync, updatePushToken } from '../utils/pushNotification';
 
 const Login = () => {
   const navigation = useNavigation();
@@ -63,7 +64,10 @@ const Login = () => {
     try {
       const token = await SecureStore.getItemAsync('jwt');
       const userData = await SecureStore.getItemAsync('user');
-      
+      if (token) {
+        await SecureStore.setItemAsync('jwt', token);
+        console.log('✅✅ JWT token successfully saved in SecureStore');
+      }
       if (token && userData) {
         const user = JSON.parse(userData);
         console.log('Found existing token and user data');
@@ -90,63 +94,66 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${baseUrl}/auth/login`, {
+      // First attempt login
+      const loginResponse = await axios.post(`${baseUrl}/auth/login`, {
         email,
-        password,
+        password
       });
 
-      const { data } = response;
+      const { token, user } = loginResponse.data;
       
-      if (!data?.token || !data?.user) {
+      if (!token || !user) {
         throw new Error('Invalid response from server');
       }
 
-      // Store complete user data including role
-      await SecureStore.setItemAsync('jwt', data.token);
-      await SecureStore.setItemAsync('user', JSON.stringify({
-        id: data.user.id || data.user._id,
-        email: data.user.email,
-        name: data.user.name,
-        role: data.user.role, // Explicitly store the role
-        firebaseUid: data.user.firebaseUid,
-        status: data.user.status,
-        userImage: data.user.userImage
-      }));
-      
-      // Also store role separately for easier access
-      await SecureStore.setItemAsync('userRole', data.user.role || 'user');
-      
-      // Set Authorization header
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      
-      // Dispatch login with complete user data
+      // Set the token immediately for subsequent requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      // Now get push token
+      const pushToken = await registerForPushNotificationsAsync();
+      console.log('[Login] Got push token:', pushToken);
+
+      // If we have a push token, update it
+      if (pushToken) {
+        try {
+          await axios.post(`${baseUrl}/auth/update-fcm-token`, 
+            { fcmToken: pushToken },
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          console.log('[Login] FCM token updated on server');
+        } catch (tokenError) {
+          console.error('[Login] FCM token update failed:', tokenError);
+          // Continue login process even if token update fails
+        }
+      }
+
+      // Complete login with user data
       const userData = {
-        user: data.user,
-        token: data.token
+        ...user,
+        fcmToken: pushToken
       };
-      
-      dispatch(login(userData));
-      dispatch(setCurrentUser(userData));
-      
+
+      await SecureStore.setItemAsync('jwt', token);
+      console.log('✅✅ JWT token successfully saved in SecureStore');
+      await SecureStore.setItemAsync('user', JSON.stringify(userData));
+      await SecureStore.setItemAsync('userRole', user.role || 'user');
+
+      dispatch(login({
+        user: userData,
+        token: token
+      }));
+
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
-      
+
     } catch (error) {
-      console.error('Login error:', error);
-      let errorMessage = 'Login failed';
-      
-      if (error.response) {
-        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`;
-        console.log('Error response data:', error.response.data);
-      } else if (error.request) {
-        errorMessage = 'No response from server. Please check your connection.';
-      } else {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert("Login Failed", errorMessage);
+      console.error('[Login] Error:', error);
+      Alert.alert(
+        "Login Failed",
+        error.response?.data?.message || "An error occurred during login"
+      );
     } finally {
       setLoading(false);
     }

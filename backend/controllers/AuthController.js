@@ -73,68 +73,81 @@ exports.signup = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, fcmToken } = req.body;
 
   try {
-    console.log(`Login attempt for email: ${email}`);
+    console.log(`[Auth] Login attempt - Email: ${email}`);
+    console.log(`[Auth] Received FCM token:`, fcmToken);
     
-    // Find user in MongoDB by email and include password for verification
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
-      console.log(`User not found: ${email}`);
+      console.log(`[Auth] User not found: ${email}`);
       return res.status(401).json({ message: 'Invalid email or password' });
-    }
-    console.log('User found, checking password...');
-    console.log('User has password field:', user.password ? 'Yes' : 'No');
-    
-    // Check if the user has a password before comparing
-    if (!user.password) {
-      console.log('User has no password stored in the database');
-      return res.status(401).json({ message: 'Account requires password reset' });
     }
 
-    // Verify password using bcrypt
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
     if (!isPasswordValid) {
-      console.log(`Invalid password for user: ${email}`);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-    console.log('Password verified, generating tokens...');
-    // Generate JWT token (more reliable than Firebase custom token)
-    const jwtToken = jwt.sign(
-      { 
-        id: user._id,
-        email: user.email,
-        role: user.role,
-        firebaseUid: user.firebaseUid
-      },
-      process.env.JWT_SECRET || 'shoespot', // Use environment variable or fallback
+
+    // Handle FCM token update
+    if (fcmToken) {
+      console.log('[Auth] Updating FCM token for user:', email);
+      
+      // Remove token from other users
+      const existingTokenUsers = await User.find({ fcmToken });
+      if (existingTokenUsers.length > 0) {
+        console.log(`[Auth] Clearing token from ${existingTokenUsers.length} other users`);
+        await User.updateMany({ fcmToken }, { $set: { fcmToken: null } });
+      }
+
+      // Update current user's token
+      user.fcmToken = fcmToken;
+      await user.save();
+      console.log('[Auth] FCM token updated successfully');
+    } else {
+      console.log('[Auth] No FCM token provided');
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'shoespot',
       { expiresIn: '7d' }
     );
 
-    // Create Firebase custom token as backup/optional
-    let firebaseToken = null;
-
-    // Return both tokens and user data
     res.status(200).json({
-      message: 'Login successful',
-      token: jwtToken, // Primary token for authentication
-      firebaseToken: firebaseToken, // Optional Firebase token
+      message: "Login successful",
+      token,
       user: {
         id: user._id,
         firebaseUid: user.firebaseUid,
         name: user.name,
         email: user.email,
         role: user.role,
-        status: user.status || firestoreData.status || 'active',
-        userImage: user.userImage || firestoreData.avatarURL || null
+        status: user.status,
+        userImage: user.userImage,
+        fcmToken: user.fcmToken
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[Auth] Login error:', error);
     res.status(500).json({ message: 'Login failed', error: error.message });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Clear FCM token
+    await User.findByIdAndUpdate(userId, { fcmToken: null });
+    console.log('Cleared FCM token for user:', userId);
+    
+    res.status(200).json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Logout failed', error: error.message });
   }
 };
 
@@ -382,33 +395,59 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-exports.updateFcmToken = async (req, res) => { 
-  const { fcmToken } = req.body;  // Get FCM token from request body
-
-  if (!fcmToken) {
-      return res.status(400).json({ message: 'FCM token is required' });
-  }
-
+exports.updateFcmToken = async (req, res) => {
   try {
-      // The user is authenticated by the 'protect' middleware
-      const user = req.user;  // User data is attached by 'protect' middleware
+    console.log('[FCM] Updating token for user:', req.user?._id);
+    console.log('[FCM] Received token:', req.body.fcmToken);
 
-      if (!user) {
-          return res.status(404).json({ message: 'User not found' });
+    const { fcmToken } = req.body;
+    const userId = req.user._id;
+
+    // Clear token from other users first
+    if (fcmToken) {
+      await User.updateMany(
+        { fcmToken: fcmToken },
+        { $set: { fcmToken: null } }
+      );
+      console.log('[FCM] Cleared token from other users');
+    }
+
+    // Update user's token
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { 
+        fcmToken,
+        deviceType: req.body.deviceType || null,
+        lastLogin: new Date()
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      console.log('[FCM] User not found:', userId);
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('[FCM] Token updated successfully');
+    return res.status(200).json({ 
+      success: true,
+      message: fcmToken ? 'FCM token updated' : 'FCM token removed',
+      user: {
+        id: updatedUser._id,
+        fcmToken: updatedUser.fcmToken
       }
+    });
 
-      // Update the FCM token in the user model
-      user.fcmToken = fcmToken;
-      await user.save();
-
-      return res.status(200).json({ message: 'FCM token updated successfully' });
   } catch (error) {
-      console.error('Error updating FCM token:', error);
-      return res.status(500).json({ message: 'Internal server error' });
+    console.error('[FCM] Update error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update FCM token',
+      error: error.message
+    });
   }
 };
 
-// Add a specific syncUser function
 exports.syncUser = async (req, res) => {
   try {
     const { email, name, photo, uid, googleId } = req.body;
@@ -581,5 +620,32 @@ exports.googleLogin = async (req, res) => {
       message: 'Google authentication failed',
       error: error.message
     });
+  }
+};
+
+exports.removeFcmToken = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Find user and clear FCM token
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { 
+        $set: { 
+          fcmToken: null,
+          deviceType: null 
+        }
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ message: 'FCM token removed successfully' });
+  } catch (error) {
+    console.error('Error removing FCM token:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };

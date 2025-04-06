@@ -50,7 +50,6 @@ const Sidebar = ({ closeSidebar }) => {
       closeSidebar();
     }
     
-    // Show confirmation dialog
     Alert.alert(
       "Logout",
       "Are you sure you want to logout?",
@@ -61,38 +60,37 @@ const Sidebar = ({ closeSidebar }) => {
           style: "destructive",
           onPress: async () => {
             try {
+              // Remove FCM token from server before clearing local storage
+              const token = await SecureStore.getItemAsync('jwt');
+              if (token) {
+                await axios.post(`${baseUrl}/auth/update-fcm-token`, 
+                  { fcmToken: null },
+                  { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+              }
+
+              // Clear local storage
               await SecureStore.deleteItemAsync('jwt');
               await SecureStore.deleteItemAsync('user');
+              await SecureStore.deleteItemAsync('userRole');
 
-
-              // Clear auth header if using axios
-              if (global.axios) {
-                delete global.axios.defaults.headers.common['Authorization'];
-              }
+              // Clear auth header
+              delete axios.defaults.headers.common['Authorization'];
               
               console.log("Dispatching logout action");
-              // Dispatch logout action to Redux
               dispatch(logout());
               
-              // Use CommonActions to reset to Welcome screen
-              // Fix: Check which screen name is actually registered in your navigator
               navigation.dispatch(
                 CommonActions.reset({
                   index: 0,
-                  routes: [{ name: 'Welcome' }], // Changed from 'WelcomeScreen' to 'Welcome'
+                  routes: [{ name: 'Welcome' }],
                 })
               );
             } catch (error) {
               console.error('Logout error:', error);
-              
-              // Even if there's an error with the signOut function,
-              // try to navigate the user away
-              try {
-                // Try a simple navigation if reset fails
-                navigation.navigate('Welcome');
-              } catch (navError) {
-                Alert.alert('Error', 'Failed to logout and navigate');
-              }
+              // Continue with local logout even if server request fails
+              dispatch(logout());
+              navigation.navigate('Welcome');
             }
           }
         }

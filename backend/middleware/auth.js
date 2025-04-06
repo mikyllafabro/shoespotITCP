@@ -1,11 +1,10 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/UserModel');
-const admin = require('firebase-admin');
 
 const protect = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
-        console.log('Auth header:', authHeader);
+        console.log('[Auth] Checking token:', authHeader ? 'Present' : 'Missing');
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({
@@ -15,54 +14,23 @@ const protect = async (req, res, next) => {
         }
 
         const token = authHeader.split(' ')[1];
-        console.log('Token received:', token ? 'Present' : 'Missing');
 
-        // First try JWT verification
-        try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || 'shoespot');
-            console.log('Decoded token:', decoded);
+        // Verify JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'shoespot');
+        console.log('[Auth] Decoded token:', decoded);
 
-            // Find user in database
-            const user = await User.findById(decoded.id);
-            if (!user) {
-                throw new Error('User not found');
-            }
-
-            // Add user info to request
-            req.user = user;
-            req.userId = user._id;
-
-            console.log('User authenticated:', {
-                userId: user._id,
-                email: user.email,
-                name: user.name
-            });
-
-            next();
-        } catch (jwtError) {
-            // If JWT fails, try Firebase verification
-            const decodedFirebase = await admin.auth().verifyIdToken(token);
-            const user = await User.findOne({ email: decodedFirebase.email });
-            
-            if (!user) {
-                throw new Error('User not found');
-            }
-
-            // Add user info to request
-            req.user = user;
-            req.userId = user._id;
-            req.token = token;
-
-            console.log('User authenticated via token:', {
-                userId: user._id,
-                email: user.email,
-                name: user.name
-            });
-
-            next();
+        // Find user and attach to request
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            throw new Error('User not found');
         }
+
+        req.user = user;
+        req.token = token;
+
+        next();
     } catch (error) {
-        console.error('Auth Error:', error);
+        console.error('[Auth] Middleware error:', error);
         res.status(401).json({
             success: false,
             message: 'Authentication failed',

@@ -37,9 +37,15 @@ const userSchema = new Schema({
         enum: ['user', 'admin'],
         default: 'user',
     },
+    deviceType: {
+        type: String,
+        enum: ['ios', 'android', 'web', null],
+        default: null
+    },
     fcmToken: {
         type: String,
         default: null,
+        sparse: true  // This allows multiple null values while ensuring uniqueness for non-null values
     },
     status: {
         type: String,
