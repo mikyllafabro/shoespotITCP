@@ -18,7 +18,18 @@ const SearchFilters = ({ onSearch }) => {
   const handleSearch = () => {
     const filters = {};
 
-    // Always include price range in filters
+    // Include search query if present
+    if (searchQuery.trim()) {
+      filters.keyword = searchQuery.trim();
+    }
+
+    onSearch(filters);
+  };
+
+  const applyFilters = () => {
+    const filters = {};
+
+    // Include price range only when applying filters
     filters.price = {
       min: priceRange.min,
       max: priceRange.max
@@ -107,7 +118,7 @@ const SearchFilters = ({ onSearch }) => {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+        <TouchableOpacity style={styles.searchButton} onPress={applyFilters}>
           <Text style={styles.searchButtonText}>Apply Filters</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>

@@ -207,48 +207,53 @@ const ProductDetails = ({ route, navigation }) => {
                         {reviewsLoading ? (
                             <Text style={styles.noReviews}>Loading reviews...</Text>
                         ) : reviews && reviews.length > 0 ? (
-                            <View style={styles.reviewsList}>
-                                {reviews.map((review) => (
-                                    <View key={review._id || Math.random()} style={styles.reviewItem}>
-                                        <View style={styles.reviewHeader}>
-                                        <View style={styles.userInfo}>
-                                                {review.userImage ? (
-                                                    <Image 
-                                                        source={{ uri: review.userImage }} 
-                                                        style={styles.userImage} 
-                                                    />
-                                                ) : (
-                                                    <View style={styles.userImagePlaceholder}>
-                                                        <Text style={styles.userInitial}>
-                                                            {review.name ? review.name[0].toUpperCase() : '?'}
+                            <View style={styles.reviewsListContainer}>
+                                <ScrollView 
+                                    style={styles.reviewsList} 
+                                    nestedScrollEnabled={true}
+                                    showsVerticalScrollIndicator={true}
+                                >
+                                    {reviews.map((review) => (
+                                        <View key={review._id || Math.random()} style={styles.reviewItem}>
+                                            <View style={styles.reviewHeader}>
+                                                <View style={styles.userInfo}>
+                                                    {review.userImage ? (
+                                                        <Image 
+                                                            source={{ uri: review.userImage }} 
+                                                            style={styles.userImage} 
+                                                        />
+                                                    ) : (
+                                                        <View style={styles.userImagePlaceholder}>
+                                                            <Text style={styles.userInitial}>
+                                                                {review.name ? review.name[0].toUpperCase() : '?'}
+                                                            </Text>
+                                                        </View>
+                                                    )}
+                                                    <View>
+                                                        <Text style={styles.reviewerName}>{review.name}</Text>
+                                                        <Text style={styles.reviewDate}>
+                                                            {new Date(review.createdAt).toLocaleDateString()}
                                                         </Text>
                                                     </View>
-                                                )}
-                                                <View>
-                                                    <Text style={styles.reviewerName}>{review.name}</Text>
-                                                    <Text style={styles.reviewDate}>
-                                                        {new Date(review.createdAt).toLocaleDateString()}
-                                                    </Text>
                                                 </View>
+                                                <Text style={styles.reviewRating}>
+                                                    {'★'.repeat(review.rating)}
+                                                    <Text style={styles.emptyStars}>{'☆'.repeat(5 - review.rating)}</Text>
+                                                </Text>
                                             </View>
-                                            <Text style={styles.reviewRating}>
-                                                {'★'.repeat(review.rating)}
-                                                <Text style={styles.emptyStars}>{'☆'.repeat(5 - review.rating)}</Text>
-                                            </Text>
+                                            <Text style={styles.reviewComment}>{review.comment}</Text>
+                                            
+                                            {isUserReview(review) && (
+                                                <TouchableOpacity 
+                                                    style={styles.editReviewButton}
+                                                    onPress={() => handleEditReview(review)}
+                                                >
+                                                    <Text style={styles.editReviewText}>Edit Review</Text>
+                                                </TouchableOpacity>
+                                            )}
                                         </View>
-                                        <Text style={styles.reviewComment}>{review.comment}</Text>
-                                        
-                                        {/* Edit Review Button - Only show for user's own reviews */}
-                                        {isUserReview(review) && (
-                                            <TouchableOpacity 
-                                                style={styles.editReviewButton}
-                                                onPress={() => handleEditReview(review)}
-                                            >
-                                                <Text style={styles.editReviewText}>Edit Review</Text>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                ))}
+                                    ))}
+                                </ScrollView>
                             </View>
                         ) : (
                             <Text style={styles.noReviews}>No reviews yet</Text>
@@ -487,6 +492,12 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginBottom: 16,
     },
+    reviewsListContainer: {
+        height: 400, // Fixed height for the reviews section
+    },
+    reviewsList: {
+        flex: 1,
+    },
     reviewsHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -496,9 +507,6 @@ const styles = StyleSheet.create({
     ratingText: {
         fontSize: 16,
         color: '#666',
-    },
-    reviewsList: {
-        maxHeight: 300, // Limit the height of reviews list
     },
     reviewItem: {
         marginBottom: 16,

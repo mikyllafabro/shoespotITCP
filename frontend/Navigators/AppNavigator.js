@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import React from "react";
+import React, { forwardRef } from 'react';
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useSelector } from "react-redux";
@@ -21,10 +21,11 @@ import Confirm from '../Screens/Cart/Checkout/Confirm';
 import AdminOrders from "../Screens/Admin/AdminOrders";
 import HomeTransactions from "../Screens/Transactions/HomeTransactions";
 import UserProfile from "../Screens/User/UserProfile";
+import NotificationDetails from '../Screens/Notifications/NotificationDetails';
 
 const Stack = createNativeStackNavigator();
 
-const AppNavigator = () => {
+const AppNavigator = forwardRef((props, ref) => {
   const { isAuthenticated, user } = useSelector(state => {
     console.log("Redux auth state:", state.auth);
     return {
@@ -37,7 +38,7 @@ const AppNavigator = () => {
   console.log("AppNavigator - user:", user);
 
     return (
-      <NavigationContainer>
+      <NavigationContainer ref={ref}>
       <Stack.Navigator>
         {!isAuthenticated ? (
           // Auth screens
@@ -166,9 +167,21 @@ const AppNavigator = () => {
           component={AdminOrders} 
           options={{ headerShown: false }}
         />
+        <Stack.Screen 
+          name="NotificationDetails" 
+          component={NotificationDetails} 
+          options={{
+            headerShown: false,
+            title: 'Notification',
+            headerStyle: {
+              backgroundColor: '#1a56a4',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
       </Stack.Navigator>
       </NavigationContainer>
     );
-};
+});
 
 export default AppNavigator;

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import baseUrl from '../../assets/common/baseUrl';  // Fixed import path
 import * as SecureStore from 'expo-secure-store';
+import { sendOrderStatusNotification } from '../../utils/notifications';  // Add this import
 
 const AdminOrders = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
@@ -77,11 +78,24 @@ const AdminOrders = ({ navigation }) => {
     
     try {
       const token = await SecureStore.getItemAsync('jwt');
-      if (!token) return;
+      const userData = await SecureStore.getItemAsync('userData');
+      
+      if (!token) {
+        Alert.alert('Error', 'Please login again');
+        return;
+      }
 
+      console.log('Attempting to update order:', {
+        orderId: selectedOrder._id,
+        newStatus: pendingStatus
+      });
+
+      // Update endpoint to match backend
       const response = await axios.patch(
-        `${baseUrl}/order/${selectedOrder._id}/status`,
-        { status: pendingStatus },
+        `${baseUrl}/order/${selectedOrder._id}/status`,  // Changed endpoint format -CHECKED
+        { 
+          status: pendingStatus
+        },
         { 
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -90,20 +104,50 @@ const AdminOrders = ({ navigation }) => {
         }
       );
 
+      console.log('Status update response:', response.data);
+
       if (response.data) {
+        try {
+          const orderData = {
+            id: selectedOrder._id,
+            orderNumber: selectedOrder._id.slice(-6),
+            products: selectedOrder.products,
+            customer: selectedOrder.email,
+            userId: selectedOrder.userId || selectedOrder.user,
+            date: selectedOrder.createdAt,
+            paymentMethod: selectedOrder.paymentMethod,
+            status: pendingStatus
+          };
+
+          await sendOrderStatusNotification(orderData, pendingStatus);
+          console.log('Notification sent successfully');
+        } catch (notifError) {
+          console.error('Notification error:', notifError);
+        }
+
+        // Refresh orders and show success
+        await fetchOrders();
         Alert.alert(
           'Success', 
           `Order status updated to ${pendingStatus}`,
-          [{ text: 'OK', onPress: () => fetchOrders() }]
+          [{ text: 'OK' }]
         );
+        setModalVisible(false);
+        setSelectedOrder(null);
+        setPendingStatus(null);
       }
     } catch (error) {
-      console.error('Error updating order status:', error);
-      Alert.alert('Error', 'Failed to update order status. Please try again.');
-    } finally {
-      setModalVisible(false);
-      setSelectedOrder(null);
-      setPendingStatus(null);
+      console.error('Full error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: error.config?.url
+      });
+
+      Alert.alert(
+        'Error',
+        'Failed to update order status. Please check your connection and try again.'
+      );
     }
   };
 

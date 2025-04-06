@@ -20,6 +20,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { updateProduct } from '../../Context/Actions/productActions';
 import baseURL from '../../assets/common/baseUrl';
 import { PRODUCT_UPDATE_RESET } from '../../Context/Constants/ProductConstants';
+import { sendProductDiscountNotification } from '../../utils/notifications';
 
 const UpdateProduct = ({ navigation, route }) => {
   const productId = route.params?.productId;
@@ -235,9 +236,27 @@ const UpdateProduct = ({ navigation, route }) => {
         images: uploadedImages,
       };
 
-      console.log(`Updating product with ID: ${productId}`);
-
       const result = await dispatch(updateProduct(productId, productData));
+
+      // Send discount notification if discount is set
+      if (parseFloat(discount) > 0) {
+        try {
+          const notificationData = {
+            _id: productId,
+            name,
+            price: parseFloat(price),
+            discount: parseFloat(discount),
+            discountedPrice: parseFloat(discountedPrice),
+            images: uploadedImages
+          };
+
+          console.log('Sending discount notification:', notificationData);
+          await sendProductDiscountNotification(notificationData);
+        } catch (notifError) {
+          console.error('Error sending discount notification:', notifError);
+        }
+      }
+
       if (result) {
         setShowSuccessModal(true);
       }
@@ -493,17 +512,6 @@ const UpdateProduct = ({ navigation, route }) => {
         )}
         
         <View style={styles.formRow}>
-          <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>Price (₱) *</Text>
-            <TextInput
-              style={styles.input}
-              value={price}
-              onChangeText={setPrice}
-              placeholder="0.00"
-              keyboardType="numeric"
-            />
-          </View>
-          
           <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
             <Text style={styles.label}>Stock *</Text>
             <TextInput
